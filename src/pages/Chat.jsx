@@ -79,95 +79,68 @@ const Shimmer = () => (
   </div>
 );
 
-// ── ChatInput: CERO estado React ───────────────────────────────────────────────
-// Toda la lógica visual se maneja por refs + DOM directo.
-// El componente NUNCA re-renderiza mientras el usuario escribe.
-// Solo re-renderiza cuando `sending` cambia (spinner on/off).
+// ── ChatInput ─────────────────────────────────────────────────────────────────
+// memo() garantiza que NO re-renderiza cuando el padre actualiza mensajes (polling).
+// useState interno solo re-renderiza este componente, nunca el padre.
 const ChatInput = memo(({ onSend, sending }) => {
-  const taRef   = useRef(null);
-  const btnRef  = useRef(null);
-  const spinRef = useRef(null);
-  const iconRef = useRef(null);
-  const sendRef = useRef(sending);
+  const [text, setText] = useState('');
+  const taRef = useRef(null);
 
+  // Restaurar foco después de enviar
   useEffect(() => {
-    sendRef.current = sending;
-    const btn = btnRef.current;
-    const ta  = taRef.current;
-    if (!btn) return;
-    if (sending) {
-      btn.disabled = true;
-      btn.style.background = 'rgba(255,255,255,0.05)';
-      btn.style.cursor = 'not-allowed';
-      if (spinRef.current) spinRef.current.style.display = 'flex';
-      if (iconRef.current) iconRef.current.style.display = 'none';
-    } else {
-      const has = (ta?.value?.trim().length || 0) > 0;
-      btn.disabled = !has;
-      btn.style.background = has ? 'linear-gradient(135deg,#0ea5e9,#06b6d4)' : 'rgba(255,255,255,0.05)';
-      btn.style.cursor = has ? 'pointer' : 'default';
-      if (spinRef.current) spinRef.current.style.display = 'none';
-      if (iconRef.current) iconRef.current.style.display = 'flex';
-      ta?.focus();
-    }
+    if (!sending) taRef.current?.focus();
   }, [sending]);
 
-  const syncBtn = (val) => {
-    const btn = btnRef.current;
-    if (!btn || sendRef.current) return;
-    const has = val.trim().length > 0;
-    btn.disabled = !has;
-    btn.style.background = has ? 'linear-gradient(135deg,#0ea5e9,#06b6d4)' : 'rgba(255,255,255,0.05)';
-    btn.style.cursor = has ? 'pointer' : 'default';
-  };
-
-  const handleInput = (e) => {
+  const handleChange = (e) => {
+    setText(e.target.value);
     const el = e.target;
     el.style.height = 'auto';
     el.style.height = `${Math.min(el.scrollHeight, 120)}px`;
-    syncBtn(el.value);
   };
 
   const submit = () => {
-    const val = taRef.current?.value?.trim();
-    if (!val || sendRef.current) return;
-    taRef.current.value = '';
-    taRef.current.style.height = 'auto';
-    syncBtn('');
+    const val = text.trim();
+    if (!val || sending) return;
+    setText('');
+    if (taRef.current) taRef.current.style.height = 'auto';
     onSend(val);
   };
+
+  const canSend = text.trim().length > 0 && !sending;
 
   return (
     <form onSubmit={e => { e.preventDefault(); submit(); }}
       style={{ display: 'flex', alignItems: 'flex-end', gap: 8, padding: '10px 14px', borderTop: '1px solid rgba(255,255,255,0.05)', background: '#07090f', flexShrink: 0 }}>
       <textarea
         ref={taRef}
-        rows={1}
-        onInput={handleInput}
+        value={text}
+        onChange={handleChange}
         onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submit(); } }}
         placeholder="Escribe un mensaje…"
+        disabled={sending}
+        rows={1}
         style={{
           flex: 1, borderRadius: 22, padding: '10px 16px', fontSize: 14,
           resize: 'none', outline: 'none', lineHeight: 1.5, fontFamily: 'inherit',
-          background: '#111827', border: '1px solid rgba(255,255,255,0.09)',
-          color: '#f1f5f9', minHeight: 42, maxHeight: 120, transition: 'border-color .2s',
+          background: '#111827', border: '1px solid rgba(14,165,233,0.3)',
+          color: '#f1f5f9', minHeight: 42, maxHeight: 120,
         }}
-        onFocus={e => (e.target.style.borderColor = 'rgba(14,165,233,0.5)')}
-        onBlur={e  => (e.target.style.borderColor = 'rgba(255,255,255,0.09)')}
       />
-      <button ref={btnRef} type="submit" disabled
-        style={{ width: 40, height: 40, borderRadius: 12, border: 'none', background: 'rgba(255,255,255,0.05)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, transition: 'background .15s' }}>
-        <span ref={spinRef} style={{ display: 'none', alignItems: 'center', justifyContent: 'center' }}>
-          <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
-            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-          </svg>
-        </span>
-        <span ref={iconRef} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <svg width={16} height={16} fill="currentColor" viewBox="0 0 24 24" style={{ marginLeft: 2 }}>
-            <path d="M2 21l21-9L2 3v7l15 2-15 2z" />
-          </svg>
-        </span>
+      <button type="submit" disabled={!canSend}
+        style={{
+          width: 40, height: 40, borderRadius: 12, border: 'none', color: '#fff', flexShrink: 0,
+          background: canSend ? 'linear-gradient(135deg,#0ea5e9,#06b6d4)' : 'rgba(255,255,255,0.07)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: canSend ? 'pointer' : 'default',
+        }}>
+        {sending
+          ? <svg className="animate-spin" width={16} height={16} fill="none" viewBox="0 0 24 24">
+              <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" style={{ opacity: 0.25 }} />
+              <path fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" style={{ opacity: 0.75 }} />
+            </svg>
+          : <svg width={16} height={16} fill="currentColor" viewBox="0 0 24 24" style={{ marginLeft: 2 }}>
+              <path d="M2 21l21-9L2 3v7l15 2-15 2z" />
+            </svg>
+        }
       </button>
     </form>
   );
