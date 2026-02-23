@@ -398,17 +398,6 @@ export default function Chat() {
                     return (
                       <div key={conv.userId} style={{ position: 'relative' }}>
 
-                        {/* Confirmación de borrado inline */}
-                        {confirming && (
-                          <div style={{ position: 'absolute', inset: 0, zIndex: 10, background: 'rgba(7,11,18,0.97)', display: 'flex', alignItems: 'center', gap: 8, padding: '0 12px', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
-                            <p style={{ flex: 1, fontSize: 12, color: '#94a3b8' }}>¿Eliminar chat con <b style={{ color: '#f1f5f9' }}>{conv.username}</b>?</p>
-                            <button onClick={() => handleDelete(conv.userId)}
-                              style={{ padding: '4px 12px', borderRadius: 7, border: 'none', background: '#ef4444', color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>Sí</button>
-                            <button onClick={() => setConfirmDel(null)}
-                              style={{ padding: '4px 10px', borderRadius: 7, border: '1px solid rgba(255,255,255,0.1)', background: 'transparent', color: '#64748b', fontSize: 12, cursor: 'pointer' }}>No</button>
-                          </div>
-                        )}
-
                         {/* Fila: área clickable + botón trash como hermanos, NO anidados */}
                         <div style={{
                           display: 'flex', alignItems: 'center',
@@ -439,8 +428,8 @@ export default function Chat() {
                               </p>
                             </div>
                           </button>
-                          {/* Botón trash — hermano del botón principal, no anidado */}
-                          <button onClick={() => setConfirmDel(conv.userId)}
+                          {/* Botón trash — abre modal de confirmación */}
+                          <button onClick={() => { selectUser(conv); setConfirmDel(conv.userId); }}
                             title="Eliminar conversación"
                             style={{ width: 32, height: 32, borderRadius: 7, border: '1px solid rgba(239,68,68,0.25)', background: 'rgba(239,68,68,0.08)', color: '#f87171', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, cursor: 'pointer', marginRight: 8 }}>
                             <svg width={14} height={14} fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -456,7 +445,7 @@ export default function Chat() {
         </div>
 
         {/* ── Panel de chat ── */}
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', background: '#070b12' }}>
           {!selUser
             ? <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 10, color: '#374151' }}>
                 <svg width={40} height={40} fill="none" stroke="currentColor" viewBox="0 0 24 24" style={{ opacity: .15 }}>
@@ -482,7 +471,7 @@ export default function Chat() {
                     </svg>
                   </button>
                 </div>
-                <div ref={scrollRef} style={{ flex: 1, overflowY: 'auto', padding: '12px 16px' }} className="chat-scroll">
+                <div ref={scrollRef} style={{ flex: 1, overflowY: 'auto', padding: '12px 16px', background: '#070b12' }} className="chat-scroll">
                   {renderMessages()}
                   <div ref={endRef} style={{ height: 4 }} />
                 </div>
@@ -492,12 +481,12 @@ export default function Chat() {
         </div>
       </div>
 
-      {/* Modal: eliminar conversación abierta (desde header del chat) */}
-      {confirmDel && confirmDel === selUser?.userId && (
+      {/* Modal: confirmar eliminación */}
+      {confirmDel && (
         <Modal onClose={() => setConfirmDel(null)}>
           <p style={{ fontWeight: 700, fontSize: 15, marginBottom: 6 }}>Eliminar conversación</p>
           <p style={{ fontSize: 13, color: '#64748b', marginBottom: 20 }}>
-            Se borrarán todos los mensajes con <b style={{ color: '#f1f5f9' }}>{selUser?.username}</b>. Esta acción no se puede deshacer.
+            Se borrarán todos los mensajes con <b style={{ color: '#f1f5f9' }}>{convs.find(c => c.userId === confirmDel)?.username || selUser?.username}</b>. Esta acción no se puede deshacer.
           </p>
           <div style={{ display: 'flex', gap: 10 }}>
             <button onClick={() => setConfirmDel(null)} className="btn btn-ghost" style={{ flex: 1 }}>Cancelar</button>
