@@ -10,12 +10,12 @@ const fmtTime = ds =>
 const fmtDate = ds => {
   const d = new Date(ds), now = new Date(), yest = new Date();
   yest.setDate(now.getDate() - 1);
-  if (d.toDateString() === now.toDateString()) return 'Hoy';
-  if (d.toDateString() === yest.toDateString()) return 'Ayer';
+  if (d.toDateString() === now.toDateString())   return 'Hoy';
+  if (d.toDateString() === yest.toDateString())  return 'Ayer';
   return d.toLocaleDateString('es-ES', { day: 'numeric', month: 'long' });
 };
 
-// ── Componentes visuales (estáticos, sin hooks) ────────────────────────────────
+// ── Avatar ─────────────────────────────────────────────────────────────────────
 const Av = ({ name = '?', sm }) => (
   <div style={{
     width: sm ? 30 : 38, height: sm ? 30 : 38, borderRadius: '50%', flexShrink: 0,
@@ -27,12 +27,13 @@ const Av = ({ name = '?', sm }) => (
   </div>
 );
 
+// ── Burbuja de mensaje ─────────────────────────────────────────────────────────
 const Bubble = ({ msg, otherName, myName }) => {
   const mine = msg.fromMe;
   return (
-    <div className={`flex items-end gap-2 mb-1.5 ${mine ? 'justify-end' : ''} ${msg._isNew ? 'chat-bubble-in' : ''}`}>
+    <div style={{ display: 'flex', alignItems: 'flex-end', gap: 8, marginBottom: 6, justifyContent: mine ? 'flex-end' : 'flex-start', animation: msg._isNew ? 'bubbleIn .2s ease both' : 'none' }}>
       {!mine && <Av name={otherName} sm />}
-      <div className={`flex flex-col gap-0.5 ${mine ? 'items-end' : 'items-start'}`} style={{ maxWidth: '70%' }}>
+      <div style={{ maxWidth: '70%', display: 'flex', flexDirection: 'column', alignItems: mine ? 'flex-end' : 'flex-start', gap: 3 }}>
         <div style={{
           padding: '9px 14px', fontSize: 14, lineHeight: 1.55,
           wordBreak: 'break-word', whiteSpace: 'pre-wrap',
@@ -42,7 +43,7 @@ const Bubble = ({ msg, otherName, myName }) => {
         }}>
           {msg.content}
         </div>
-        <div className={`flex items-center gap-1 ${mine ? 'flex-row-reverse' : ''}`} style={{ paddingInline: 4 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 4, paddingInline: 4, flexDirection: mine ? 'row-reverse' : 'row' }}>
           <span style={{ fontSize: 10, color: '#374151' }}>{fmtTime(msg.created_at)}</span>
           {mine && (
             <span style={{ fontSize: 10, color: msg._sending ? '#374151' : msg.read_at ? '#06b6d4' : '#4b5563' }}>
@@ -56,81 +57,68 @@ const Bubble = ({ msg, otherName, myName }) => {
   );
 };
 
+// ── Separador de fecha ─────────────────────────────────────────────────────────
 const DateBar = ({ label }) => (
-  <div className="flex items-center gap-3 my-5">
+  <div style={{ display: 'flex', alignItems: 'center', gap: 12, margin: '16px 0' }}>
     <div style={{ flex: 1, height: 1, background: 'rgba(255,255,255,0.06)' }} />
-    <span style={{ fontSize: 11, color: '#374151', padding: '3px 12px', borderRadius: 20, background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)', flexShrink: 0 }}>{label}</span>
+    <span style={{ fontSize: 11, color: '#374151', padding: '3px 12px', borderRadius: 20, background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>{label}</span>
     <div style={{ flex: 1, height: 1, background: 'rgba(255,255,255,0.06)' }} />
   </div>
 );
 
-const EmptyConv = ({ name }) => (
-  <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 10 }}>
-    <div style={{ width: 44, height: 44, borderRadius: '50%', background: 'rgba(6,182,212,0.08)', border: '1px solid rgba(6,182,212,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <svg width={20} height={20} fill="none" stroke="currentColor" style={{ color: '#374151' }} viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-      </svg>
-    </div>
-    <p style={{ fontSize: 13, color: '#4b5563' }}>Empieza a chatear con {name}</p>
-  </div>
-);
-
-const MsgShimmer = () => (
+// ── Shimmer de carga ───────────────────────────────────────────────────────────
+const Shimmer = () => (
   <div style={{ padding: 16 }}>
     {[52, 80, 60, 96, 44].map((w, i) => (
-      <div key={i} className={`flex items-end gap-2 mb-3 ${i % 2 === 0 ? 'justify-end' : ''}`}>
-        {i % 2 !== 0 && <div className="skeleton flex-shrink-0" style={{ width: 28, height: 28, borderRadius: '50%' }} />}
+      <div key={i} style={{ display: 'flex', alignItems: 'flex-end', gap: 8, marginBottom: 12, justifyContent: i % 2 === 0 ? 'flex-end' : 'flex-start' }}>
+        {i % 2 !== 0 && <div className="skeleton" style={{ width: 28, height: 28, borderRadius: '50%', flexShrink: 0 }} />}
         <div className="skeleton" style={{ width: w + 40, height: 36, borderRadius: 18 }} />
-        {i % 2 === 0 && <div className="skeleton flex-shrink-0" style={{ width: 28, height: 28, borderRadius: '50%' }} />}
+        {i % 2 === 0 && <div className="skeleton" style={{ width: 28, height: 28, borderRadius: '50%', flexShrink: 0 }} />}
       </div>
     ))}
   </div>
 );
 
-// ── ChatInput: CERO estado React ──────────────────────────────────────────────
-// Toda la lógica visual (botón activo/spinner) se maneja con refs + DOM directo.
-// Esto garantiza que el textarea NUNCA sea afectado por re-renders del padre.
-// El componente solo se re-renderiza cuando `sending` cambia (spinner on/off).
+// ── ChatInput: CERO estado React ───────────────────────────────────────────────
+// Toda la lógica visual se maneja por refs + DOM directo.
+// El componente NUNCA re-renderiza mientras el usuario escribe.
+// Solo re-renderiza cuando `sending` cambia (spinner on/off).
 const ChatInput = memo(({ onSend, sending }) => {
-  const taRef      = useRef(null);
-  const btnRef     = useRef(null);
-  const spinRef    = useRef(null);
-  const iconRef    = useRef(null);
-  const sendingRef = useRef(sending);
+  const taRef   = useRef(null);
+  const btnRef  = useRef(null);
+  const spinRef = useRef(null);
+  const iconRef = useRef(null);
+  const sendRef = useRef(sending);
 
-  // Cuando `sending` cambia: actualizar DOM directamente, sin setState
   useEffect(() => {
-    sendingRef.current = sending;
+    sendRef.current = sending;
     const btn = btnRef.current;
     const ta  = taRef.current;
     if (!btn) return;
-
     if (sending) {
       btn.disabled = true;
       btn.style.background = 'rgba(255,255,255,0.05)';
+      btn.style.cursor = 'not-allowed';
       if (spinRef.current) spinRef.current.style.display = 'flex';
       if (iconRef.current) iconRef.current.style.display = 'none';
     } else {
       const has = (ta?.value?.trim().length || 0) > 0;
       btn.disabled = !has;
-      btn.style.background = has
-        ? 'linear-gradient(135deg,#0ea5e9,#06b6d4)'
-        : 'rgba(255,255,255,0.05)';
+      btn.style.background = has ? 'linear-gradient(135deg,#0ea5e9,#06b6d4)' : 'rgba(255,255,255,0.05)';
+      btn.style.cursor = has ? 'pointer' : 'default';
       if (spinRef.current) spinRef.current.style.display = 'none';
       if (iconRef.current) iconRef.current.style.display = 'flex';
       ta?.focus();
     }
   }, [sending]);
 
-  // Actualizar botón vía DOM (sin React state)
   const syncBtn = (val) => {
     const btn = btnRef.current;
-    if (!btn || sendingRef.current) return;
+    if (!btn || sendRef.current) return;
     const has = val.trim().length > 0;
     btn.disabled = !has;
-    btn.style.background = has
-      ? 'linear-gradient(135deg,#0ea5e9,#06b6d4)'
-      : 'rgba(255,255,255,0.05)';
+    btn.style.background = has ? 'linear-gradient(135deg,#0ea5e9,#06b6d4)' : 'rgba(255,255,255,0.05)';
+    btn.style.cursor = has ? 'pointer' : 'default';
   };
 
   const handleInput = (e) => {
@@ -142,59 +130,39 @@ const ChatInput = memo(({ onSend, sending }) => {
 
   const submit = () => {
     const val = taRef.current?.value?.trim();
-    if (!val || sendingRef.current) return;
+    if (!val || sendRef.current) return;
     taRef.current.value = '';
     taRef.current.style.height = 'auto';
     syncBtn('');
     onSend(val);
   };
 
-  const handleKeyDown = (e) => {
-    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submit(); }
-  };
-
   return (
-    <form
-      onSubmit={e => { e.preventDefault(); submit(); }}
-      style={{ display: 'flex', alignItems: 'flex-end', gap: 8, padding: '10px 14px', borderTop: '1px solid rgba(255,255,255,0.05)', background: '#07090f', flexShrink: 0 }}
-    >
+    <form onSubmit={e => { e.preventDefault(); submit(); }}
+      style={{ display: 'flex', alignItems: 'flex-end', gap: 8, padding: '10px 14px', borderTop: '1px solid rgba(255,255,255,0.05)', background: '#07090f', flexShrink: 0 }}>
       <textarea
         ref={taRef}
         rows={1}
         onInput={handleInput}
-        onKeyDown={handleKeyDown}
+        onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submit(); } }}
         placeholder="Escribe un mensaje…"
         style={{
           flex: 1, borderRadius: 22, padding: '10px 16px', fontSize: 14,
           resize: 'none', outline: 'none', lineHeight: 1.5, fontFamily: 'inherit',
           background: '#111827', border: '1px solid rgba(255,255,255,0.09)',
-          color: '#f1f5f9', minHeight: 42, maxHeight: 120,
-          transition: 'border-color .2s',
+          color: '#f1f5f9', minHeight: 42, maxHeight: 120, transition: 'border-color .2s',
         }}
         onFocus={e => (e.target.style.borderColor = 'rgba(14,165,233,0.5)')}
         onBlur={e  => (e.target.style.borderColor = 'rgba(255,255,255,0.09)')}
       />
-      <button
-        ref={btnRef}
-        type="submit"
-        disabled
-        style={{
-          width: 40, height: 40, borderRadius: 12, border: 'none', cursor: 'pointer',
-          background: 'rgba(255,255,255,0.05)',
-          color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center',
-          flexShrink: 0, transition: 'background .15s',
-        }}
-        onMouseDown={e => (e.currentTarget.style.transform = 'scale(.88)')}
-        onMouseUp={e   => (e.currentTarget.style.transform = 'scale(1)')}
-      >
-        {/* Spinner: visible solo durante sending */}
+      <button ref={btnRef} type="submit" disabled
+        style={{ width: 40, height: 40, borderRadius: 12, border: 'none', background: 'rgba(255,255,255,0.05)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, transition: 'background .15s' }}>
         <span ref={spinRef} style={{ display: 'none', alignItems: 'center', justifyContent: 'center' }}>
           <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
             <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
             <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
           </svg>
         </span>
-        {/* Ícono enviar: visible por defecto */}
         <span ref={iconRef} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <svg width={16} height={16} fill="currentColor" viewBox="0 0 24 24" style={{ marginLeft: 2 }}>
             <path d="M2 21l21-9L2 3v7l15 2-15 2z" />
@@ -205,25 +173,35 @@ const ChatInput = memo(({ onSend, sending }) => {
   );
 });
 
+// ── Modal genérico ─────────────────────────────────────────────────────────────
+const Modal = ({ onClose, children }) => (
+  <div style={{ position: 'fixed', inset: 0, zIndex: 50, background: 'rgba(0,0,0,0.75)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}
+    onClick={e => e.target === e.currentTarget && onClose()}>
+    <div style={{ background: '#0f1623', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 20, padding: 24, width: '100%', maxWidth: 420 }}>
+      {children}
+    </div>
+  </div>
+);
+
 // ── Componente principal ───────────────────────────────────────────────────────
 export default function Chat() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const isAdmin  = user?.role === 'admin' || user?.role === 'supervisor';
 
-  const [convs,       setConvs]       = useState([]);
-  const [selUser,     setSelUser]     = useState(null);
-  const [msgs,        setMsgs]        = useState([]);
-  const [convLoading, setConvLoading] = useState(true);
-  const [msgsLoading, setMsgsLoading] = useState(false);
-  const [sending,     setSending]     = useState(false);
+  const [convs,        setConvs]        = useState([]);
+  const [selUser,      setSelUser]      = useState(null);
+  const [msgs,         setMsgs]         = useState([]);
+  const [convLoading,  setConvLoading]  = useState(true);
+  const [msgsLoading,  setMsgsLoading]  = useState(false);
+  const [sending,      setSending]      = useState(false);
 
-  // Admin: hover sobre conversación, confirmación de borrado, modal nuevo chat
-  const [hoveredConv,  setHoveredConv]  = useState(null);
-  const [deletingConv, setDeletingConv] = useState(null); // userId en confirmación
-  const [showCompose,  setShowCompose]  = useState(false);
-  const [composeUid,   setComposeUid]   = useState('');
-  const [composeTxt,   setComposeTxt]   = useState('');
+  // Admin extras
+  const [hoveredConv,    setHoveredConv]    = useState(null);
+  const [confirmDel,     setConfirmDel]     = useState(null); // userId
+  const [showCompose,    setShowCompose]    = useState(false);
+  const [composeUid,     setComposeUid]     = useState('');
+  const [composeTxt,     setComposeTxt]     = useState('');
   const [composeSending, setComposeSending] = useState(false);
 
   const endRef    = useRef(null);
@@ -233,14 +211,14 @@ export default function Chat() {
 
   useEffect(() => { selUidRef.current = selUser?.userId ?? null; }, [selUser?.userId]);
 
-  // Poll de conversaciones cada 8s
+  // Poll conversaciones
   useEffect(() => {
     fetchConvs();
     const iv = setInterval(fetchConvs, 8000);
     return () => clearInterval(iv);
   }, []);
 
-  // Mensajes: carga inicial + poll cada 3s
+  // Mensajes: carga inicial + poll 3s
   useEffect(() => {
     if (!selUser?.userId) return;
     lastIdRef.current = 0;
@@ -250,7 +228,7 @@ export default function Chat() {
     return () => clearInterval(iv);
   }, [selUser?.userId]);
 
-  // Auto-scroll al fondo cuando llegan mensajes nuevos
+  // Auto-scroll
   useEffect(() => {
     if (msgs.length && isNearBottom()) {
       endRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -259,19 +237,18 @@ export default function Chat() {
 
   const isNearBottom = () => {
     const c = scrollRef.current;
-    return !c || c.scrollHeight - c.scrollTop - c.clientHeight < 100;
+    return !c || c.scrollHeight - c.scrollTop - c.clientHeight < 120;
   };
 
   const scrollToEnd = (instant) =>
     endRef.current?.scrollIntoView({ behavior: instant ? 'instant' : 'smooth' });
 
-  // ── API ────────────────────────────────────────────────────────────────────
+  // ── API calls ──────────────────────────────────────────────────────────────
   const fetchConvs = async () => {
     try {
       const res = await getConversations();
       const d = res?.data || res;
       if (d.isAdmin) {
-        // startTransition: update de baja prioridad, no interrumpe el typing
         startTransition(() => setConvs(d.conversations || []));
       } else if (d.conversation) {
         setSelUser(prev => prev?.userId === d.conversation.userId ? prev : d.conversation);
@@ -282,7 +259,7 @@ export default function Chat() {
 
   const loadAll = async (uid) => {
     try {
-      const res = await getMessages(uid, null);
+      const res  = await getMessages(uid, null);
       const list = (res?.data?.messages || []).map(m => ({ ...m, _isNew: false }));
       setMsgs(list);
       lastIdRef.current = list.length ? list[list.length - 1].id : 0;
@@ -294,10 +271,9 @@ export default function Chat() {
   const poll = async (uid) => {
     if (!uid) return;
     try {
-      const res = await getMessages(uid, lastIdRef.current);
+      const res      = await getMessages(uid, lastIdRef.current);
       const incoming = res?.data?.messages || [];
       if (!incoming.length) return;
-      // startTransition: React procesa esto DESPUÉS del input del usuario
       startTransition(() => {
         setMsgs(prev => {
           const seen  = new Set(prev.map(m => m.id));
@@ -312,16 +288,13 @@ export default function Chat() {
     } catch { }
   };
 
-  // Estable gracias a useCallback + refs (no depende de selUser ni lastId)
   const handleSend = useCallback(async (content) => {
     if (!content || !selUidRef.current) return;
     setSending(true);
-
     const tid  = `t${Date.now()}`;
     const temp = { id: tid, content, fromMe: true, created_at: new Date().toISOString(), _sending: true, _isNew: true };
     setMsgs(prev => [...prev, temp]);
     scrollToEnd(true);
-
     try {
       const res  = await sendMessage(selUidRef.current, content);
       const real = res?.data?.message;
@@ -338,31 +311,32 @@ export default function Chat() {
     }
   }, []);
 
-  // Eliminar todos los mensajes de una conversación
-  const handleDeleteConv = async (userId) => {
+  // ── Admin: eliminar conversación ───────────────────────────────────────────
+  const handleDelete = async (userId) => {
     try {
       await deleteConversation(userId);
       if (selUser?.userId === userId) {
         setMsgs([]);
         lastIdRef.current = 0;
       }
-      setDeletingConv(null);
+      setConfirmDel(null);
+      setHoveredConv(null);
       fetchConvs();
     } catch { }
   };
 
-  // Enviar mensaje inicial desde el modal "Nuevo chat"
+  // ── Admin: nueva conversación ──────────────────────────────────────────────
   const handleCompose = async () => {
     if (!composeUid || !composeTxt.trim()) return;
     setComposeSending(true);
     try {
       await sendMessage(parseInt(composeUid), composeTxt.trim());
-      const conv = convs.find(c => c.userId === parseInt(composeUid));
-      if (conv) selectUser(conv);
+      await fetchConvs();
+      const target = convs.find(c => c.userId === parseInt(composeUid));
+      if (target) selectUser(target);
       setShowCompose(false);
       setComposeTxt('');
       setComposeUid('');
-      fetchConvs();
     } catch { }
     finally { setComposeSending(false); }
   };
@@ -374,10 +348,21 @@ export default function Chat() {
     setSelUser(conv);
   };
 
-  // ── Render de mensajes ─────────────────────────────────────────────────────
+  // ── Render mensajes ────────────────────────────────────────────────────────
   const renderMessages = () => {
-    if (msgsLoading) return <MsgShimmer />;
-    if (!msgs.length)  return <EmptyConv name={selUser?.username || 'Admin'} />;
+    if (msgsLoading) return <Shimmer />;
+    if (!msgs.length) return (
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 10 }}>
+        <div style={{ width: 44, height: 44, borderRadius: '50%', background: 'rgba(6,182,212,0.08)', border: '1px solid rgba(6,182,212,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <svg width={20} height={20} fill="none" stroke="currentColor" style={{ color: '#374151' }} viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+          </svg>
+        </div>
+        <p style={{ fontSize: 13, color: '#4b5563' }}>
+          {isAdmin ? `Inicia la conversación con ${selUser?.username}` : 'Escribe tu primer mensaje'}
+        </p>
+      </div>
+    );
     const groups = {};
     msgs.forEach(m => {
       const k = new Date(m.created_at).toDateString();
@@ -403,22 +388,20 @@ export default function Chat() {
           </svg>
         </button>
         <div>
-          <p style={{ fontWeight: 600, fontSize: 14 }}>Chat Privado</p>
+          <p style={{ fontWeight: 600, fontSize: 14 }}>Chat</p>
           <p style={{ fontSize: 11, color: '#4b5563' }}>{convs.length} empleados</p>
         </div>
       </header>
 
       <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
-        {/* Sidebar */}
+
+        {/* ── Sidebar ── */}
         <div style={S.sidebar}>
-          {/* Header del sidebar con botón nuevo chat */}
-          <div style={{ padding: '9px 14px', borderBottom: '1px solid rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <p style={{ fontSize: 10, fontWeight: 700, color: '#374151', letterSpacing: '.08em' }}>EMPLEADOS</p>
-            <button
-              onClick={() => { setComposeUid(convs[0]?.userId?.toString() || ''); setShowCompose(true); }}
-              title="Nuevo chat"
-              style={{ width: 24, height: 24, borderRadius: 6, border: '1px solid rgba(6,182,212,0.25)', background: 'rgba(6,182,212,0.08)', color: '#67e8f9', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0 }}
-            >
+          <div style={{ padding: '10px 14px', borderBottom: '1px solid rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <p style={{ fontSize: 10, fontWeight: 700, color: '#475569', letterSpacing: '.08em' }}>EMPLEADOS</p>
+            <button onClick={() => { setComposeUid(convs[0]?.userId?.toString() || ''); setShowCompose(true); }}
+              title="Nueva conversación"
+              style={{ width: 26, height: 26, borderRadius: 7, border: '1px solid rgba(6,182,212,0.3)', background: 'rgba(6,182,212,0.08)', color: '#67e8f9', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
               <svg width={12} height={12} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
               </svg>
@@ -427,49 +410,46 @@ export default function Chat() {
 
           <div style={{ flex: 1, overflowY: 'auto' }} className="chat-scroll">
             {convLoading
-              ? <div style={{ padding: 14 }} className="space-y-3">
-                  {[1, 2, 3].map(i => (
-                    <div key={i} className="flex items-center gap-3">
-                      <div className="skeleton flex-shrink-0" style={{ width: 36, height: 36, borderRadius: '50%' }} />
-                      <div style={{ flex: 1 }} className="space-y-1.5">
-                        <div className="skeleton" style={{ height: 11, borderRadius: 6, width: '70%' }} />
-                        <div className="skeleton" style={{ height: 9, borderRadius: 6, width: '45%' }} />
-                      </div>
+              ? [1,2,3].map(i => (
+                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px' }}>
+                    <div className="skeleton" style={{ width: 36, height: 36, borderRadius: '50%', flexShrink: 0 }} />
+                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                      <div className="skeleton" style={{ height: 11, borderRadius: 6, width: '70%' }} />
+                      <div className="skeleton" style={{ height: 9,  borderRadius: 6, width: '45%' }} />
                     </div>
-                  ))}
-                </div>
+                  </div>
+                ))
               : convs.length === 0
                 ? <p style={{ padding: '36px 14px', textAlign: 'center', fontSize: 12, color: '#374151' }}>Sin empleados</p>
                 : convs.map(conv => {
-                    const active    = selUser?.userId === conv.userId;
-                    const hovered   = hoveredConv === conv.userId;
-                    const confirming = deletingConv === conv.userId;
+                    const active     = selUser?.userId === conv.userId;
+                    const hovered    = hoveredConv === conv.userId;
+                    const confirming = confirmDel  === conv.userId;
                     return (
                       <div key={conv.userId} style={{ position: 'relative' }}
                         onMouseEnter={() => setHoveredConv(conv.userId)}
-                        onMouseLeave={() => { setHoveredConv(null); if (deletingConv === conv.userId) setDeletingConv(null); }}>
+                        onMouseLeave={() => { setHoveredConv(null); if (confirmDel === conv.userId) setConfirmDel(null); }}>
 
-                        {/* Fila de confirmación de borrado */}
+                        {/* Confirmación de borrado inline */}
                         {confirming && (
-                          <div style={{ position: 'absolute', inset: 0, zIndex: 10, background: 'rgba(10,12,20,0.96)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '0 10px', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
-                            <p style={{ fontSize: 11, color: '#94a3b8', flex: 1 }}>¿Eliminar chat?</p>
-                            <button onClick={() => handleDeleteConv(conv.userId)}
-                              style={{ padding: '3px 10px', borderRadius: 6, border: 'none', background: '#ef4444', color: '#fff', fontSize: 11, cursor: 'pointer', fontWeight: 600 }}>
-                              Sí
-                            </button>
-                            <button onClick={() => setDeletingConv(null)}
-                              style={{ padding: '3px 10px', borderRadius: 6, border: '1px solid rgba(255,255,255,0.1)', background: 'transparent', color: '#94a3b8', fontSize: 11, cursor: 'pointer' }}>
-                              No
-                            </button>
+                          <div style={{ position: 'absolute', inset: 0, zIndex: 10, background: 'rgba(7,11,18,0.97)', display: 'flex', alignItems: 'center', gap: 8, padding: '0 12px', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                            <p style={{ flex: 1, fontSize: 12, color: '#94a3b8' }}>¿Eliminar chat con <b style={{ color: '#f1f5f9' }}>{conv.username}</b>?</p>
+                            <button onClick={() => handleDelete(conv.userId)}
+                              style={{ padding: '4px 12px', borderRadius: 7, border: 'none', background: '#ef4444', color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>Sí</button>
+                            <button onClick={() => setConfirmDel(null)}
+                              style={{ padding: '4px 10px', borderRadius: 7, border: '1px solid rgba(255,255,255,0.1)', background: 'transparent', color: '#64748b', fontSize: 12, cursor: 'pointer' }}>No</button>
                           </div>
                         )}
 
-                        <button onClick={() => selectUser(conv)}
-                          style={{ ...S.convBtn, borderLeft: `2px solid ${active ? '#06b6d4' : 'transparent'}`, background: active ? 'rgba(6,182,212,0.07)' : hovered ? 'rgba(255,255,255,0.03)' : 'transparent' }}>
-                          <div style={{ position: 'relative' }}>
+                        <button onClick={() => selectUser(conv)} style={{
+                          ...S.convBtn,
+                          borderLeft: `2px solid ${active ? '#06b6d4' : 'transparent'}`,
+                          background: active ? 'rgba(6,182,212,0.07)' : hovered ? 'rgba(255,255,255,0.03)' : 'transparent',
+                        }}>
+                          <div style={{ position: 'relative', flexShrink: 0 }}>
                             <Av name={conv.username} />
                             {conv.unreadCount > 0 && (
-                              <span style={{ position: 'absolute', top: -4, right: -4, width: 16, height: 16, borderRadius: 8, background: '#ef4444', color: '#fff', fontSize: 9, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                              <span style={{ position: 'absolute', top: -3, right: -3, minWidth: 16, height: 16, borderRadius: 8, background: '#ef4444', color: '#fff', fontSize: 9, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 3px' }}>
                                 {conv.unreadCount > 9 ? '9+' : conv.unreadCount}
                               </span>
                             )}
@@ -477,20 +457,22 @@ export default function Chat() {
                           <div style={{ flex: 1, minWidth: 0 }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 4 }}>
                               <span style={{ fontWeight: 500, fontSize: 13, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{conv.username}</span>
-                              {conv.lastMessage && !hovered && <span style={{ fontSize: 10, color: '#374151', flexShrink: 0 }}>{fmtTime(conv.lastMessage.timestamp)}</span>}
+                              {conv.lastMessage && !hovered && (
+                                <span style={{ fontSize: 10, color: '#374151', flexShrink: 0 }}>{fmtTime(conv.lastMessage.timestamp)}</span>
+                              )}
                             </div>
                             <p style={{ fontSize: 11, marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: conv.unreadCount > 0 ? '#94a3b8' : '#374151', fontWeight: conv.unreadCount > 0 ? 500 : 400 }}>
-                              {conv.lastMessage ? (conv.lastMessage.fromMe ? 'Tú: ' : '') + conv.lastMessage.content : 'Sin mensajes'}
+                              {conv.lastMessage
+                                ? (conv.lastMessage.fromMe ? 'Tú: ' : '') + conv.lastMessage.content
+                                : <span style={{ fontStyle: 'italic' }}>Sin mensajes</span>}
                             </p>
                           </div>
-                          {/* Botón eliminar visible al hacer hover */}
+                          {/* Botón trash — solo en hover */}
                           {hovered && !confirming && (
-                            <button
-                              onClick={e => { e.stopPropagation(); setDeletingConv(conv.userId); }}
-                              title="Eliminar chat"
-                              style={{ width: 26, height: 26, borderRadius: 6, border: '1px solid rgba(239,68,68,0.25)', background: 'rgba(239,68,68,0.08)', color: '#f87171', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, cursor: 'pointer' }}
-                            >
-                              <svg width={12} height={12} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <button onClick={e => { e.stopPropagation(); setConfirmDel(conv.userId); }}
+                              title="Eliminar conversación"
+                              style={{ width: 28, height: 28, borderRadius: 7, border: '1px solid rgba(239,68,68,0.25)', background: 'rgba(239,68,68,0.08)', color: '#f87171', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, cursor: 'pointer' }}>
+                              <svg width={13} height={13} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                               </svg>
                             </button>
@@ -503,61 +485,18 @@ export default function Chat() {
           </div>
         </div>
 
-        {/* Modal: Nuevo chat */}
-        {showCompose && (
-          <div style={{ position: 'fixed', inset: 0, zIndex: 50, background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}
-            onClick={e => e.target === e.currentTarget && setShowCompose(false)}>
-            <div style={{ background: '#0f1623', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 20, padding: 24, width: '100%', maxWidth: 420 }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
-                <div>
-                  <p style={{ fontWeight: 700, fontSize: 15 }}>Nuevo Chat</p>
-                  <p style={{ fontSize: 11, color: '#475569', marginTop: 2 }}>Inicia una conversación con un empleado</p>
-                </div>
-                <button onClick={() => setShowCompose(false)} style={{ width: 28, height: 28, borderRadius: 8, border: 'none', background: 'rgba(255,255,255,0.05)', color: '#64748b', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <svg width={14} height={14} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12"/></svg>
-                </button>
-              </div>
-
-              <div style={{ marginBottom: 14 }}>
-                <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: '#94a3b8', marginBottom: 6, letterSpacing: '.04em' }}>EMPLEADO</label>
-                <select value={composeUid} onChange={e => setComposeUid(e.target.value)} className="field" style={{ width: '100%' }}>
-                  <option value="">Seleccionar empleado…</option>
-                  {convs.map(c => <option key={c.userId} value={c.userId}>{c.username}</option>)}
-                </select>
-              </div>
-
-              <div style={{ marginBottom: 20 }}>
-                <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: '#94a3b8', marginBottom: 6, letterSpacing: '.04em' }}>MENSAJE</label>
-                <textarea
-                  value={composeTxt}
-                  onChange={e => setComposeTxt(e.target.value)}
-                  onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleCompose(); } }}
-                  rows={3}
-                  placeholder="Escribe tu mensaje…"
-                  className="field resize-none"
-                  style={{ width: '100%' }}
-                  autoFocus
-                />
-              </div>
-
-              <div style={{ display: 'flex', gap: 10 }}>
-                <button onClick={() => setShowCompose(false)} className="btn btn-ghost" style={{ flex: 1 }}>Cancelar</button>
-                <button onClick={handleCompose} disabled={!composeUid || !composeTxt.trim() || composeSending} className="btn btn-primary" style={{ flex: 1 }}>
-                  {composeSending ? 'Enviando…' : 'Enviar'}
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Panel de chat */}
+        {/* ── Panel de chat ── */}
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
           {!selUser
-            ? <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 8, color: '#374151' }}>
-                <svg width={36} height={36} fill="none" stroke="currentColor" viewBox="0 0 24 24" style={{ opacity: .18 }}>
+            ? <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 10, color: '#374151' }}>
+                <svg width={40} height={40} fill="none" stroke="currentColor" viewBox="0 0 24 24" style={{ opacity: .15 }}>
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M17 8h2a2 2 0 012 2v6a2 2 0 01-2 2h-2v4l-4-4H9a1.994 1.994 0 01-1.414-.586m0 0L11 14h4a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2v4l.586-.586z" />
                 </svg>
                 <p style={{ fontSize: 13 }}>Selecciona un empleado</p>
+                <button onClick={() => { setComposeUid(convs[0]?.userId?.toString() || ''); setShowCompose(true); }}
+                  className="btn btn-primary text-xs px-4 py-2 mt-2">
+                  + Nueva conversación
+                </button>
               </div>
             : <>
                 <div style={S.chatHeader}>
@@ -566,6 +505,12 @@ export default function Chat() {
                     <p style={{ fontWeight: 600, fontSize: 13 }}>{selUser.username}</p>
                     <p style={{ fontSize: 11, color: '#4b5563' }}>{selUser.email || 'Empleado'}</p>
                   </div>
+                  <button onClick={() => setConfirmDel(selUser.userId)} title="Eliminar conversación"
+                    style={{ marginLeft: 'auto', width: 30, height: 30, borderRadius: 8, border: '1px solid rgba(239,68,68,0.2)', background: 'rgba(239,68,68,0.06)', color: '#f87171', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0 }}>
+                    <svg width={14} height={14} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                  </button>
                 </div>
                 <div ref={scrollRef} style={{ flex: 1, overflowY: 'auto', padding: '12px 16px' }} className="chat-scroll">
                   {renderMessages()}
@@ -576,6 +521,61 @@ export default function Chat() {
           }
         </div>
       </div>
+
+      {/* Modal: eliminar conversación abierta (desde header del chat) */}
+      {confirmDel && confirmDel === selUser?.userId && hoveredConv !== confirmDel && (
+        <Modal onClose={() => setConfirmDel(null)}>
+          <p style={{ fontWeight: 700, fontSize: 15, marginBottom: 6 }}>Eliminar conversación</p>
+          <p style={{ fontSize: 13, color: '#64748b', marginBottom: 20 }}>
+            Se borrarán todos los mensajes con <b style={{ color: '#f1f5f9' }}>{selUser?.username}</b>. Esta acción no se puede deshacer.
+          </p>
+          <div style={{ display: 'flex', gap: 10 }}>
+            <button onClick={() => setConfirmDel(null)} className="btn btn-ghost" style={{ flex: 1 }}>Cancelar</button>
+            <button onClick={() => handleDelete(confirmDel)} className="btn btn-danger" style={{ flex: 1 }}>Eliminar</button>
+          </div>
+        </Modal>
+      )}
+
+      {/* Modal: nueva conversación */}
+      {showCompose && (
+        <Modal onClose={() => { setShowCompose(false); setComposeTxt(''); setComposeUid(''); }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
+            <div>
+              <p style={{ fontWeight: 700, fontSize: 15 }}>Nueva Conversación</p>
+              <p style={{ fontSize: 11, color: '#475569', marginTop: 2 }}>Inicia un chat con un empleado</p>
+            </div>
+            <button onClick={() => setShowCompose(false)}
+              style={{ width: 28, height: 28, borderRadius: 8, border: 'none', background: 'rgba(255,255,255,0.05)', color: '#64748b', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <svg width={14} height={14} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12"/></svg>
+            </button>
+          </div>
+          <div style={{ marginBottom: 14 }}>
+            <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: '#94a3b8', marginBottom: 6, letterSpacing: '.04em' }}>EMPLEADO</label>
+            <select value={composeUid} onChange={e => setComposeUid(e.target.value)} className="field" style={{ width: '100%' }}>
+              <option value="">Seleccionar empleado…</option>
+              {convs.map(c => <option key={c.userId} value={c.userId}>{c.username}</option>)}
+            </select>
+          </div>
+          <div style={{ marginBottom: 20 }}>
+            <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: '#94a3b8', marginBottom: 6, letterSpacing: '.04em' }}>MENSAJE</label>
+            <textarea
+              value={composeTxt}
+              onChange={e => setComposeTxt(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleCompose(); } }}
+              rows={3} placeholder="Escribe tu mensaje…"
+              className="field resize-none" style={{ width: '100%' }}
+              autoFocus
+            />
+          </div>
+          <div style={{ display: 'flex', gap: 10 }}>
+            <button onClick={() => { setShowCompose(false); setComposeTxt(''); setComposeUid(''); }} className="btn btn-ghost" style={{ flex: 1 }}>Cancelar</button>
+            <button onClick={handleCompose} disabled={!composeUid || !composeTxt.trim() || composeSending} className="btn btn-primary" style={{ flex: 1 }}>
+              {composeSending ? 'Enviando…' : 'Enviar'}
+            </button>
+          </div>
+        </Modal>
+      )}
+
       <style>{CSS}</style>
     </div>
   );
@@ -599,7 +599,7 @@ export default function Chat() {
       </header>
 
       {convLoading
-        ? <div style={{ flex: 1, overflowY: 'auto' }} className="chat-scroll"><MsgShimmer /></div>
+        ? <div style={{ flex: 1, overflowY: 'auto' }} className="chat-scroll"><Shimmer /></div>
         : !selUser
           ? <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <p style={{ fontSize: 13, color: '#4b5563' }}>No hay administrador disponible</p>
