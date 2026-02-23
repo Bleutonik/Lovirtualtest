@@ -409,36 +409,45 @@ export default function Chat() {
                           </div>
                         )}
 
-                        <button onClick={() => selectUser(conv)} style={{
-                          ...S.convBtn,
+                        {/* Fila: área clickable + botón trash como hermanos, NO anidados */}
+                        <div style={{
+                          display: 'flex', alignItems: 'center',
                           borderLeft: `2px solid ${active ? '#06b6d4' : 'transparent'}`,
                           background: active ? 'rgba(6,182,212,0.07)' : 'transparent',
+                          borderBottom: '1px solid rgba(255,255,255,0.03)',
                         }}>
-                          <div style={{ position: 'relative', flexShrink: 0 }}>
-                            <Av name={conv.username} />
-                            {conv.unreadCount > 0 && (
-                              <span style={{ position: 'absolute', top: -3, right: -3, minWidth: 16, height: 16, borderRadius: 8, background: '#ef4444', color: '#fff', fontSize: 9, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 3px' }}>
-                                {conv.unreadCount > 9 ? '9+' : conv.unreadCount}
-                              </span>
-                            )}
-                          </div>
-                          <div style={{ flex: 1, minWidth: 0 }}>
-                            <span style={{ fontWeight: 500, fontSize: 13, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'block' }}>{conv.username}</span>
-                            <p style={{ fontSize: 11, marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: conv.unreadCount > 0 ? '#94a3b8' : '#374151', fontWeight: conv.unreadCount > 0 ? 500 : 400 }}>
-                              {conv.lastMessage
-                                ? (conv.lastMessage.fromMe ? 'Tú: ' : '') + conv.lastMessage.content
-                                : <span style={{ fontStyle: 'italic' }}>Sin mensajes</span>}
-                            </p>
-                          </div>
-                          {/* Botón trash — siempre visible */}
-                          <button onClick={e => { e.stopPropagation(); setConfirmDel(conv.userId); }}
+                          {/* Área principal: seleccionar usuario */}
+                          <button onClick={() => selectUser(conv)} style={{
+                            flex: 1, display: 'flex', alignItems: 'center', gap: 10,
+                            padding: '11px 8px 11px 14px', textAlign: 'left', border: 'none',
+                            background: 'transparent', cursor: 'pointer', color: '#f1f5f9', fontFamily: 'inherit', minWidth: 0,
+                          }}>
+                            <div style={{ position: 'relative', flexShrink: 0 }}>
+                              <Av name={conv.username} />
+                              {conv.unreadCount > 0 && (
+                                <span style={{ position: 'absolute', top: -3, right: -3, minWidth: 16, height: 16, borderRadius: 8, background: '#ef4444', color: '#fff', fontSize: 9, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 3px' }}>
+                                  {conv.unreadCount > 9 ? '9+' : conv.unreadCount}
+                                </span>
+                              )}
+                            </div>
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <span style={{ fontWeight: 500, fontSize: 13, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'block' }}>{conv.username}</span>
+                              <p style={{ fontSize: 11, marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: conv.unreadCount > 0 ? '#94a3b8' : '#374151', fontWeight: conv.unreadCount > 0 ? 500 : 400 }}>
+                                {conv.lastMessage
+                                  ? (conv.lastMessage.fromMe ? 'Tú: ' : '') + conv.lastMessage.content
+                                  : <span style={{ fontStyle: 'italic' }}>Sin mensajes</span>}
+                              </p>
+                            </div>
+                          </button>
+                          {/* Botón trash — hermano del botón principal, no anidado */}
+                          <button onClick={() => setConfirmDel(conv.userId)}
                             title="Eliminar conversación"
-                            style={{ width: 28, height: 28, borderRadius: 7, border: '1px solid rgba(239,68,68,0.2)', background: 'rgba(239,68,68,0.06)', color: '#f87171', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, cursor: 'pointer' }}>
-                            <svg width={13} height={13} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            style={{ width: 32, height: 32, borderRadius: 7, border: '1px solid rgba(239,68,68,0.25)', background: 'rgba(239,68,68,0.08)', color: '#f87171', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, cursor: 'pointer', marginRight: 8 }}>
+                            <svg width={14} height={14} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                             </svg>
                           </button>
-                        </button>
+                        </div>
                       </div>
                     );
                   })
