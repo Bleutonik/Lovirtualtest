@@ -2,484 +2,203 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import * as api from '../services/api';
 
-// Iconos
-const ArrowLeftIcon = () => (
-  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-  </svg>
-);
+/* ─── Helpers ──────────────────────────────────────────── */
+const fmtDate = (ds) => ds ? new Date(ds).toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' }) : 'N/A';
+const fmtTime = (ds) => ds ? new Date(ds).toLocaleTimeString('es-PR', { hour: '2-digit', minute: '2-digit' }) : '-';
 
-const UsersIcon = () => (
-  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
-  </svg>
-);
+const PERM_TYPE  = { personal:'Personal', medical:'Médico', vacation:'Vacaciones', other:'Otro', dia_libre:'Día Libre', llegada_tarde:'Llegada Tarde', salida_temprana:'Salida Temprana' };
+const INC_TYPE   = { technical:'Técnico', connectivity:'Conectividad', schedule:'Horario', general:'General', other:'Otro' };
+const INC_PRI    = { low:['badge-gray','Baja'], medium:['badge-yellow','Media'], high:['badge-orange','Alta'], critical:['badge-red','Crítica'] };
+const INC_STATUS = { open:['badge-yellow','Abierto'], pending:['badge-yellow','Pendiente'], in_review:['badge-blue','En revisión'], resolved:['badge-green','Resuelto'], closed:['badge-gray','Cerrado'] };
+const PERM_STATUS= { pending:['badge-yellow','Pendiente'], approved:['badge-green','Aprobado'], rejected:['badge-red','Rechazado'] };
+const ACT_CFG    = { active:{ dot:'dot-green', badge:'badge-green', bg:'rgba(34,197,94,0.06)',   border:'rgba(34,197,94,0.15)',   label:'Activo' },
+                     idle:  { dot:'dot-yellow',badge:'badge-yellow',bg:'rgba(234,179,8,0.06)',   border:'rgba(234,179,8,0.15)',   label:'Inactivo' },
+                     afk:   { dot:'dot-red',   badge:'badge-red',   bg:'rgba(239,68,68,0.06)',   border:'rgba(239,68,68,0.15)',   label:'AFK' },
+                     offline:{ dot:'dot-gray', badge:'badge-gray',  bg:'rgba(100,116,139,0.04)', border:'rgba(100,116,139,0.1)',  label:'Desconectado' } };
 
-const ShieldIcon = () => (
-  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-  </svg>
-);
+/* ─── Small components ──────────────────────────────────── */
+const Bdg = ({ pair }) => <span className={`badge ${pair[0]}`}>{pair[1]}</span>;
+const Th  = ({ children }) => <th className="text-left py-3 px-4 text-xs font-semibold uppercase tracking-wider" style={{ color:'#475569', borderBottom:'1px solid rgba(255,255,255,0.05)' }}>{children}</th>;
+const Td  = ({ children, muted }) => <td className="py-3 px-4 text-sm" style={{ color: muted ? '#64748b' : '#e2e8f0', borderBottom:'1px solid rgba(255,255,255,0.03)' }}>{children}</td>;
 
-const AlertIcon = () => (
-  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-  </svg>
-);
-
-const CheckIcon = () => (
-  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-  </svg>
-);
-
-const XIcon = () => (
-  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-  </svg>
-);
-
-const ClockIcon = () => (
-  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-  </svg>
-);
-
-const EyeIcon = () => (
-  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-  </svg>
-);
-
+/* ─── Main ──────────────────────────────────────────────── */
 const Admin = () => {
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState('activity');
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
+  const [activeTab, setActiveTab]   = useState('activity');
+  const [isLoading, setIsLoading]   = useState(true);
+  const [error, setError]           = useState('');
+  const [success, setSuccess]       = useState('');
 
-  // Estados para usuarios
-  const [users, setUsers] = useState([]);
-  const [userForm, setUserForm] = useState({
-    username: '',
-    email: '',
-    password: ''
-  });
-  const [isCreatingUser, setIsCreatingUser] = useState(false);
-  const [editingUser, setEditingUser] = useState(null);
-  const [editForm, setEditForm] = useState({ email: '', role: '' });
+  const [users,          setUsers]          = useState([]);
+  const [userForm,       setUserForm]       = useState({ username:'', email:'', password:'' });
+  const [isCreating,     setIsCreating]     = useState(false);
+  const [editingUser,    setEditingUser]    = useState(null);
+  const [editForm,       setEditForm]       = useState({ email:'', role:'' });
 
-  // Estados para permisos
-  const [permissions, setPermissions] = useState([]);
-
-  // Estados para incidentes
-  const [incidents, setIncidents] = useState([]);
-
-  // Estados para reportes
-  const [attendance, setAttendance] = useState([]);
-  const [breaks, setBreaks] = useState([]);
-
-  // Estados para monitoreo de actividad
+  const [permissions,    setPermissions]    = useState([]);
+  const [incidents,      setIncidents]      = useState([]);
+  const [attendance,     setAttendance]     = useState([]);
+  const [breaks,         setBreaks]         = useState([]);
   const [activityStatus, setActivityStatus] = useState([]);
-  const [activitySummary, setActivitySummary] = useState({ active: 0, idle: 0, afk: 0, offline: 0 });
+  const [summary,        setSummary]        = useState({ active:0, idle:0, afk:0, offline:0 });
 
-  // Verificar rol de admin
   useEffect(() => {
-    const user = JSON.parse(localStorage.getItem('user') || '{}');
-    if (user.role !== 'admin') {
-      navigate('/');
-      return;
-    }
-    loadData();
-
-    // Actualizar actividad cada 30 segundos
-    const activityInterval = setInterval(() => {
-      loadActivity();
-    }, 30000);
-
-    return () => clearInterval(activityInterval);
+    const u = JSON.parse(localStorage.getItem('user') || '{}');
+    if (u.role !== 'admin') { navigate('/'); return; }
+    loadAll();
+    const iv = setInterval(loadActivity, 30000);
+    return () => clearInterval(iv);
   }, [navigate]);
 
-  const loadData = async () => {
+  const loadAll = async () => {
     setIsLoading(true);
-    try {
-      await Promise.all([
-        loadUsers(),
-        loadPermissions(),
-        loadIncidents(),
-        loadAttendance(),
-        loadBreaks(),
-        loadActivity()
-      ]);
-    } catch (err) {
-      console.error('Error cargando datos:', err);
-    } finally {
-      setIsLoading(false);
-    }
+    await Promise.allSettled([ loadUsers(), loadPermissions(), loadIncidents(), loadAttendance(), loadBreaks(), loadActivity() ]);
+    setIsLoading(false);
   };
 
-  const loadAttendance = async () => {
-    try {
-      const data = await api.get('/attendance/all');
-      const att = data?.data?.attendance || data?.attendance || [];
-      setAttendance(Array.isArray(att) ? att : []);
-    } catch (err) {
-      console.error('Error cargando asistencia:', err);
-    }
+  const loadActivity    = async () => { try { const d = await api.get('/activity/status'); setActivityStatus(d?.data?.statuses||[]); setSummary(d?.data?.summary||{active:0,idle:0,afk:0,offline:0}); } catch {} };
+  const loadAttendance  = async () => { try { const d = await api.get('/attendance/all');  setAttendance(d?.data?.attendance||d?.attendance||[]); } catch {} };
+  const loadBreaks      = async () => { try { const d = await api.get('/breaks/all');       setBreaks(d?.data?.breaks||d?.breaks||[]); } catch {} };
+  const loadUsers       = async () => { try { const d = await api.get('/users');            setUsers(d?.data?.users||d?.users||d?.data||[]); } catch {} };
+  const loadPermissions = async () => { try { const d = await api.get('/permissions/all'); setPermissions(d?.data?.permissions||d?.permissions||d?.data||[]); } catch {} };
+  const loadIncidents   = async () => { try { const d = await api.get('/incidents');        setIncidents(d?.data||d?.incidents||[]); } catch {} };
+
+  const flash = (msg, type='success') => {
+    if (type==='success') { setSuccess(msg); setTimeout(()=>setSuccess(''),3000); }
+    else { setError(msg); setTimeout(()=>setError(''),4000); }
   };
 
-  const loadBreaks = async () => {
-    try {
-      const data = await api.get('/breaks/all');
-      const brks = data?.data?.breaks || data?.breaks || [];
-      setBreaks(Array.isArray(brks) ? brks : []);
-    } catch (err) {
-      console.error('Error cargando breaks:', err);
-    }
-  };
-
-  const loadActivity = async () => {
-    try {
-      const data = await api.get('/activity/status');
-      const statuses = data?.data?.statuses || [];
-      const summary = data?.data?.summary || { active: 0, idle: 0, afk: 0, offline: 0 };
-      setActivityStatus(Array.isArray(statuses) ? statuses : []);
-      setActivitySummary(summary);
-    } catch (err) {
-      console.error('Error cargando actividad:', err);
-    }
-  };
-
-  const loadUsers = async () => {
-    try {
-      const data = await api.get('/users');
-      // Backend returns { success: true, data: { users: [...] } }
-      const users = data?.data?.users || data?.users || data?.data || [];
-      setUsers(Array.isArray(users) ? users : []);
-    } catch (err) {
-      console.error('Error cargando usuarios:', err);
-    }
-  };
-
-  const loadPermissions = async () => {
-    try {
-      const data = await api.get('/permissions/all');
-      // Backend returns { success: true, data: { permissions: [...], types: {...} } }
-      const perms = data?.data?.permissions || data?.permissions || data?.data || [];
-      setPermissions(Array.isArray(perms) ? perms : []);
-    } catch (err) {
-      console.error('Error cargando permisos:', err);
-    }
-  };
-
-  const loadIncidents = async () => {
-    try {
-      const data = await api.get('/incidents');
-      // Backend returns { success: true, data: [...] }
-      const incidents = data?.data || data?.incidents || data || [];
-      setIncidents(Array.isArray(incidents) ? incidents : []);
-    } catch (err) {
-      console.error('Error cargando incidentes:', err);
-    }
-  };
-
-  // Funciones de usuario
   const handleCreateUser = async (e) => {
     e.preventDefault();
-    if (!userForm.username.trim() || !userForm.password.trim()) {
-      setError('Usuario y contrasena son obligatorios');
-      return;
-    }
-
-    setIsCreatingUser(true);
-    setError('');
-    try {
-      await api.post('/users', {
-        username: userForm.username,
-        email: userForm.email || null,
-        password: userForm.password,
-        role: 'employee'
-      });
-      setSuccess('Usuario creado exitosamente');
-      setUserForm({ username: '', email: '', password: '' });
-      await loadUsers();
-      setTimeout(() => setSuccess(''), 3000);
-    } catch (err) {
-      setError(err.message || 'Error al crear usuario');
-      setTimeout(() => setError(''), 5000);
-    } finally {
-      setIsCreatingUser(false);
-    }
-  };
-
-  // Editar usuario
-  const handleEditUser = (user) => {
-    setEditingUser(user);
-    setEditForm({ email: user.email || '', role: user.role });
+    setIsCreating(true);
+    try { await api.post('/users', { username:userForm.username, email:userForm.email||null, password:userForm.password, role:'employee' }); setUserForm({username:'',email:'',password:''}); flash('Usuario creado'); await loadUsers(); }
+    catch (err) { flash(err.message||'Error al crear usuario','error'); }
+    finally { setIsCreating(false); }
   };
 
   const handleSaveEdit = async () => {
-    if (!editingUser) return;
-    try {
-      await api.put(`/users/${editingUser.id}`, editForm);
-      setSuccess('Usuario actualizado');
-      setEditingUser(null);
-      await loadUsers();
-      setTimeout(() => setSuccess(''), 3000);
-    } catch (err) {
-      setError(err.message || 'Error al actualizar usuario');
-      setTimeout(() => setError(''), 5000);
-    }
+    try { await api.put(`/users/${editingUser.id}`, editForm); setEditingUser(null); flash('Usuario actualizado'); await loadUsers(); }
+    catch (err) { flash(err.message||'Error','error'); }
   };
 
-  // Eliminar usuario
-  const handleDeleteUser = async (user) => {
-    if (user.role === 'admin') {
-      setError('No puedes eliminar un administrador');
-      setTimeout(() => setError(''), 3000);
-      return;
-    }
-
-    if (!confirm(`¿Estas seguro de eliminar a ${user.username}?`)) return;
-
-    try {
-      await api.del(`/users/${user.id}`);
-      setSuccess('Usuario eliminado');
-      await loadUsers();
-      setTimeout(() => setSuccess(''), 3000);
-    } catch (err) {
-      setError(err.message || 'Error al eliminar usuario');
-      setTimeout(() => setError(''), 5000);
-    }
+  const handleDeleteUser = async (u) => {
+    if (u.role==='admin') { flash('No puedes eliminar un admin','error'); return; }
+    if (!confirm(`¿Eliminar a ${u.username}?`)) return;
+    try { await api.del(`/users/${u.id}`); flash('Usuario eliminado'); await loadUsers(); }
+    catch (err) { flash(err.message||'Error','error'); }
   };
 
-  // Funciones de permisos
-  const handleApprovePermission = async (id) => {
-    try {
-      await api.put(`/permissions/${id}/approve`);
-      setSuccess('Permiso aprobado');
-      await loadPermissions();
-      setTimeout(() => setSuccess(''), 3000);
-    } catch (err) {
-      setError(err.message || 'Error al aprobar permiso');
-    }
-  };
+  const approvePerm = async (id) => { try { await api.put(`/permissions/${id}/approve`); flash('Permiso aprobado'); await loadPermissions(); } catch (err) { flash(err.message,'error'); } };
+  const rejectPerm  = async (id) => { try { await api.put(`/permissions/${id}/reject`);  flash('Permiso rechazado'); await loadPermissions(); } catch (err) { flash(err.message,'error'); } };
+  const updateInc   = async (id, status) => { try { await api.put(`/incidents/${id}/status`, { status }); flash(`Marcado: ${status}`); await loadIncidents(); } catch (err) { flash(err.message,'error'); } };
 
-  const handleRejectPermission = async (id) => {
-    try {
-      await api.put(`/permissions/${id}/reject`);
-      setSuccess('Permiso rechazado');
-      await loadPermissions();
-      setTimeout(() => setSuccess(''), 3000);
-    } catch (err) {
-      setError(err.message || 'Error al rechazar permiso');
-    }
-  };
+  const pendingPerms = permissions.filter(p => p.status==='pending');
+  const openIncs     = incidents.filter(i => i.status==='open'||i.status==='pending').length;
 
-  // Funciones de incidentes
-  const handleUpdateIncidentStatus = async (id, status) => {
-    try {
-      await api.put(`/incidents/${id}/status`, { status });
-      setSuccess(`Incidente marcado como ${status === 'in_review' ? 'en revision' : 'resuelto'}`);
-      await loadIncidents();
-      setTimeout(() => setSuccess(''), 3000);
-    } catch (err) {
-      setError(err.message || 'Error al actualizar incidente');
-    }
-  };
-
-  // Utilidades de formato
-  const formatDate = (dateStr) => {
-    if (!dateStr) return 'N/A';
-    const date = new Date(dateStr);
-    return date.toLocaleDateString('es-ES', {
-      day: 'numeric',
-      month: 'short',
-      year: 'numeric'
-    });
-  };
-
-  const getPermissionTypeLabel = (type) => {
-    const labels = {
-      personal: 'Personal',
-      medical: 'Medico',
-      vacation: 'Vacaciones',
-      other: 'Otro'
-    };
-    return labels[type] || type;
-  };
-
-  const getIncidentTypeLabel = (type) => {
-    const labels = {
-      technical: 'Tecnico',
-      connectivity: 'Conectividad',
-      schedule: 'Horario',
-      other: 'Otro'
-    };
-    return labels[type] || type;
-  };
-
-  const getStatusBadge = (status, type = 'permission') => {
-    const styles = {
-      pending: 'bg-yellow-500/20 text-yellow-400',
-      approved: 'bg-green-500/20 text-green-400',
-      rejected: 'bg-red-500/20 text-red-400',
-      in_review: 'bg-blue-500/20 text-blue-400',
-      resolved: 'bg-green-500/20 text-green-400'
-    };
-    const labels = {
-      pending: 'Pendiente',
-      approved: 'Aprobado',
-      rejected: 'Rechazado',
-      in_review: 'En Revision',
-      resolved: 'Resuelto'
-    };
-    return (
-      <span className={`px-2 py-1 rounded-full text-xs font-medium ${styles[status] || styles.pending}`}>
-        {labels[status] || 'Pendiente'}
-      </span>
-    );
-  };
-
-  const getPriorityBadge = (priority) => {
-    const styles = {
-      low: 'bg-gray-500/20 text-gray-400',
-      medium: 'bg-yellow-500/20 text-yellow-400',
-      high: 'bg-orange-500/20 text-orange-400',
-      critical: 'bg-red-500/20 text-red-400'
-    };
-    const labels = {
-      low: 'Baja',
-      medium: 'Media',
-      high: 'Alta',
-      critical: 'Critica'
-    };
-    return (
-      <span className={`px-2 py-1 rounded-full text-xs font-medium ${styles[priority] || styles.medium}`}>
-        {labels[priority] || 'Media'}
-      </span>
-    );
-  };
-
-  // Filtrar permisos pendientes
-  const pendingPermissions = permissions.filter(p => p.status === 'pending');
-
-  const tabs = [
-    { id: 'activity', label: 'Actividad', icon: <EyeIcon />, count: activitySummary.afk, highlight: activitySummary.afk > 0 },
-    { id: 'reports', label: 'Reportes Hoy', icon: <ClockIcon />, count: attendance.length },
-    { id: 'users', label: 'Crear Usuario', icon: <UsersIcon /> },
-    { id: 'permissions', label: 'Permisos', icon: <ShieldIcon />, count: pendingPermissions.length },
-    { id: 'incidents', label: 'Incidentes', icon: <AlertIcon />, count: incidents.filter(i => i.status === 'open' || i.status === 'pending').length }
+  const TABS = [
+    { id:'activity',    label:'Actividad',   badge: summary.afk>0?summary.afk:null, danger:summary.afk>0,
+      icon:'M15 12a3 3 0 11-6 0 3 3 0 016 0zM2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z' },
+    { id:'reports',     label:'Reportes',    badge:null,
+      icon:'M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z' },
+    { id:'users',       label:'Usuarios',    badge:null,
+      icon:'M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z' },
+    { id:'permissions', label:'Permisos',    badge:pendingPerms.length||null,
+      icon:'M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z' },
+    { id:'incidents',   label:'Incidentes',  badge:openIncs||null,
+      icon:'M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z' },
   ];
 
-  if (isLoading) {
-    return (
-      <div className="min-h-screen bg-[#0a0a0a] text-white flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-cyan-500 mx-auto mb-4"></div>
-          <p className="text-gray-400">Cargando panel de administracion...</p>
-        </div>
+  if (isLoading) return (
+    <div className="min-h-screen flex items-center justify-center" style={{ background:'#070b12' }}>
+      <div className="text-center space-y-3">
+        <div className="w-10 h-10 border-2 border-t-transparent rounded-full mx-auto animate-spin" style={{ borderColor:'rgba(6,182,212,0.3)', borderTopColor:'#06b6d4' }} />
+        <p className="text-sm" style={{ color:'#475569' }}>Cargando panel...</p>
       </div>
-    );
-  }
+    </div>
+  );
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] text-white">
-      {/* Header */}
-      <header className="bg-[#111111] border-b border-gray-800 px-6 py-4">
-        <div className="flex items-center gap-4">
-          <button
-            onClick={() => navigate('/')}
-            className="p-2 hover:bg-[#1f2937] rounded-lg transition-colors"
-          >
-            <ArrowLeftIcon />
+    <div className="min-h-screen" style={{ background:'#070b12', color:'#f1f5f9' }}>
+
+      {/* ── Header ── */}
+      <header className="page-header">
+        <div className="px-5 py-3.5 flex items-center gap-4 max-w-6xl mx-auto">
+          <button onClick={() => navigate('/')} className="btn btn-ghost p-2">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+            </svg>
           </button>
-          <h1 className="text-xl font-bold">Panel de Administracion</h1>
+          <div>
+            <h1 className="font-bold">Panel de Administración</h1>
+            <p className="text-xs" style={{ color:'#475569' }}>Control total del sistema</p>
+          </div>
+          <div className="ml-auto flex items-center gap-2">
+            <span className="badge badge-yellow">Admin</span>
+          </div>
         </div>
       </header>
 
-      {/* Mensajes */}
-      <div className="max-w-6xl mx-auto px-6 pt-6">
-        {error && (
-          <div className="bg-red-500/10 border border-red-500/50 text-red-400 px-4 py-3 rounded-lg mb-4">
-            {error}
-            <button onClick={() => setError('')} className="float-right">&times;</button>
-          </div>
-        )}
-        {success && (
-          <div className="bg-green-500/10 border border-green-500/50 text-green-400 px-4 py-3 rounded-lg mb-4">
-            {success}
-          </div>
-        )}
-      </div>
+      <div className="max-w-6xl mx-auto px-5">
 
-      {/* Tabs */}
-      <div className="max-w-6xl mx-auto px-6 py-4">
-        <div className="flex gap-2 border-b border-gray-800 pb-4">
-          {tabs.map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${
-                activeTab === tab.id
-                  ? 'bg-cyan-600 text-white'
-                  : tab.highlight
-                  ? 'bg-red-600/20 text-red-400 hover:bg-red-600/30 animate-pulse'
-                  : 'bg-[#1f2937] text-gray-300 hover:bg-[#374151]'
-              }`}
-            >
-              {tab.icon}
-              {tab.label}
-              {tab.count > 0 && (
-                <span className={`text-white text-xs px-2 py-0.5 rounded-full ${
-                  tab.highlight ? 'bg-red-600' : 'bg-red-500'
-                }`}>
-                  {tab.count}
+        {/* Alertas */}
+        {(error || success) && (
+          <div className="pt-4">
+            {error   && <div className="alert-error   mb-2 flex items-center gap-2"><svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>{error}</div>}
+            {success && <div className="alert-success mb-2 flex items-center gap-2"><svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7"/></svg>{success}</div>}
+          </div>
+        )}
+
+        {/* ── Tabs ── */}
+        <div className="flex gap-1.5 py-4 overflow-x-auto" style={{ borderBottom:'1px solid rgba(255,255,255,0.05)' }}>
+          {TABS.map(t => (
+            <button key={t.id} onClick={() => setActiveTab(t.id)}
+              className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium whitespace-nowrap transition-all flex-shrink-0"
+              style={{
+                background: activeTab===t.id ? 'linear-gradient(135deg,rgba(14,165,233,.18),rgba(6,182,212,.12))' : t.danger ? 'rgba(239,68,68,0.08)' : 'rgba(255,255,255,0.04)',
+                border: activeTab===t.id ? '1px solid rgba(6,182,212,0.3)' : t.danger ? '1px solid rgba(239,68,68,0.2)' : '1px solid rgba(255,255,255,0.06)',
+                color: activeTab===t.id ? '#67e8f9' : t.danger ? '#f87171' : '#64748b'
+              }}>
+              <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={t.icon} />
+              </svg>
+              {t.label}
+              {t.badge && (
+                <span className="text-white text-xs px-1.5 py-0.5 rounded-full min-w-[18px] text-center leading-none"
+                  style={{ background: t.danger ? '#ef4444' : '#f97316', fontSize:'10px' }}>
+                  {t.badge}
                 </span>
               )}
             </button>
           ))}
         </div>
-      </div>
 
-      {/* Contenido */}
-      <main className="max-w-6xl mx-auto px-6 pb-8">
-        {/* Tab: Actividad/AFK */}
+        {/* ══════════════════════════════════════════
+            TAB: ACTIVIDAD
+        ══════════════════════════════════════════ */}
         {activeTab === 'activity' && (
-          <div className="space-y-6">
-            {/* Resumen de actividad */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <div className="bg-green-500/10 border border-green-500/30 rounded-xl p-4 text-center">
-                <p className="text-3xl font-bold text-green-400">{activitySummary.active}</p>
-                <p className="text-sm text-gray-400">Activos</p>
-              </div>
-              <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-xl p-4 text-center">
-                <p className="text-3xl font-bold text-yellow-400">{activitySummary.idle}</p>
-                <p className="text-sm text-gray-400">Inactivos</p>
-              </div>
-              <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-4 text-center">
-                <p className="text-3xl font-bold text-red-400">{activitySummary.afk}</p>
-                <p className="text-sm text-gray-400">AFK</p>
-              </div>
-              <div className="bg-gray-500/10 border border-gray-500/30 rounded-xl p-4 text-center">
-                <p className="text-3xl font-bold text-gray-400">{activitySummary.offline}</p>
-                <p className="text-sm text-gray-400">Desconectados</p>
-              </div>
+          <div className="py-5 space-y-5 animate-fade-up">
+
+            {/* Summary cards */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              {[
+                { label:'Activos',      val: summary.active,  color:'#22c55e', bg:'rgba(34,197,94,0.08)',   border:'rgba(34,197,94,0.2)' },
+                { label:'Inactivos',    val: summary.idle,    color:'#eab308', bg:'rgba(234,179,8,0.08)',   border:'rgba(234,179,8,0.2)' },
+                { label:'AFK',          val: summary.afk,     color:'#ef4444', bg:'rgba(239,68,68,0.08)',   border:'rgba(239,68,68,0.2)' },
+                { label:'Desconectados',val: summary.offline, color:'#64748b', bg:'rgba(100,116,139,0.06)', border:'rgba(100,116,139,0.15)' },
+              ].map(s => (
+                <div key={s.label} className="rounded-2xl p-4 text-center" style={{ background:s.bg, border:`1px solid ${s.border}` }}>
+                  <p className="text-3xl font-bold" style={{ color:s.color }}>{s.val}</p>
+                  <p className="text-xs mt-1" style={{ color:'#64748b' }}>{s.label}</p>
+                </div>
+              ))}
             </div>
 
-            {/* Lista de empleados */}
-            <div className="bg-[#1f2937] rounded-xl p-6 border border-[#374151]">
-              <div className="flex items-center justify-between mb-6">
-                <div className="flex items-center gap-3">
-                  <EyeIcon />
-                  <h2 className="text-lg font-semibold">Monitoreo en Tiempo Real</h2>
-                </div>
-                <button
-                  onClick={loadActivity}
-                  className="text-sm text-cyan-400 hover:text-cyan-300 flex items-center gap-1"
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            {/* Monitor en tiempo real */}
+            <div className="card p-5">
+              <div className="flex items-center justify-between mb-4">
+                <p className="font-semibold">Monitoreo en Tiempo Real</p>
+                <button onClick={loadActivity} className="btn btn-ghost text-xs px-3 py-1.5 flex items-center gap-1.5">
+                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                   </svg>
                   Actualizar
@@ -487,115 +206,69 @@ const Admin = () => {
               </div>
 
               {activityStatus.length === 0 ? (
-                <p className="text-gray-400 text-center py-8">No hay empleados conectados</p>
+                <div className="text-center py-10" style={{ color:'#475569' }}>
+                  <svg className="w-10 h-10 mx-auto mb-3 opacity-30" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 12a3 3 0 11-6 0 3 3 0 016 0zM2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                  </svg>
+                  <p className="text-sm">No hay empleados conectados</p>
+                </div>
               ) : (
-                <div className="space-y-3">
-                  {activityStatus.map((emp) => (
-                    <div
-                      key={emp.userId}
-                      className={`flex items-center justify-between p-4 rounded-lg border ${
-                        emp.status === 'afk'
-                          ? 'bg-red-500/10 border-red-500/30'
-                          : emp.status === 'idle'
-                          ? 'bg-yellow-500/10 border-yellow-500/30'
-                          : emp.status === 'active'
-                          ? 'bg-green-500/10 border-green-500/30'
-                          : 'bg-gray-500/10 border-gray-500/30'
-                      }`}
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className={`w-3 h-3 rounded-full ${
-                          emp.status === 'afk'
-                            ? 'bg-red-500 animate-pulse'
-                            : emp.status === 'idle'
-                            ? 'bg-yellow-500'
-                            : emp.status === 'active'
-                            ? 'bg-green-500'
-                            : 'bg-gray-500'
-                        }`}></div>
-                        <div>
-                          <p className="text-white font-medium">{emp.username}</p>
-                          <p className="text-sm text-gray-400">
-                            {emp.status === 'offline' && emp.lastSeen
-                              ? `Ultima vez: ${new Date(emp.lastSeen).toLocaleTimeString()}`
-                              : emp.lastActivity
-                              ? `Ultima actividad: ${new Date(emp.lastActivity).toLocaleTimeString()}`
-                              : ''}
-                          </p>
+                <div className="space-y-2">
+                  {activityStatus.map(emp => {
+                    const cfg = ACT_CFG[emp.status] || ACT_CFG.offline;
+                    return (
+                      <div key={emp.userId} className="flex items-center justify-between px-4 py-3 rounded-xl" style={{ background:cfg.bg, border:`1px solid ${cfg.border}` }}>
+                        <div className="flex items-center gap-3">
+                          <div className={cfg.dot} />
+                          <div>
+                            <p className="font-medium text-sm">{emp.username}</p>
+                            <p className="text-xs" style={{ color:'#475569' }}>
+                              {emp.status === 'offline' && emp.lastSeen ? `Última vez: ${fmtTime(emp.lastSeen)}` : emp.lastActivity ? `Actividad: ${fmtTime(emp.lastActivity)}` : ''}
+                            </p>
+                          </div>
                         </div>
+                        <span className={`badge ${cfg.badge}`}>{emp.statusLabel || cfg.label}</span>
                       </div>
-                      <div className="text-right">
-                        <span className={`px-3 py-1 rounded-full text-sm font-medium ${
-                          emp.status === 'afk'
-                            ? 'bg-red-500/20 text-red-400'
-                            : emp.status === 'idle'
-                            ? 'bg-yellow-500/20 text-yellow-400'
-                            : emp.status === 'active'
-                            ? 'bg-green-500/20 text-green-400'
-                            : 'bg-gray-500/20 text-gray-400'
-                        }`}>
-                          {emp.statusLabel}
-                        </span>
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
-
-              <p className="text-xs text-gray-500 mt-4 text-center">
-                Se actualiza automaticamente cada 30 segundos
-              </p>
+              <p className="text-xs mt-4 text-center" style={{ color:'#334155' }}>Actualización automática cada 30 segundos</p>
             </div>
           </div>
         )}
 
-        {/* Tab: Reportes */}
+        {/* ══════════════════════════════════════════
+            TAB: REPORTES
+        ══════════════════════════════════════════ */}
         {activeTab === 'reports' && (
-          <div className="space-y-6">
-            {/* Asistencia de Hoy */}
-            <div className="bg-[#1f2937] rounded-xl p-6 border border-[#374151]">
-              <div className="flex items-center gap-3 mb-6">
-                <ClockIcon />
-                <h2 className="text-lg font-semibold">Asistencia de Hoy</h2>
-                <span className="bg-cyan-500/20 text-cyan-400 px-3 py-1 rounded-full text-sm">
-                  {attendance.length} empleados
-                </span>
-              </div>
+          <div className="py-5 space-y-5 animate-fade-up">
 
+            {/* Asistencia */}
+            <div className="card p-5">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background:'rgba(6,182,212,0.1)', border:'1px solid rgba(6,182,212,0.2)' }}>
+                  <svg className="w-4 h-4" style={{ color:'#06b6d4' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </div>
+                <p className="font-semibold">Asistencia de Hoy</p>
+                <span className="badge badge-cyan ml-auto">{attendance.length} empleados</span>
+              </div>
               {attendance.length === 0 ? (
-                <p className="text-gray-400 text-center py-4">No hay registros de asistencia hoy</p>
+                <p className="text-sm text-center py-6" style={{ color:'#475569' }}>Sin registros hoy</p>
               ) : (
                 <div className="overflow-x-auto">
                   <table className="w-full">
-                    <thead>
-                      <tr className="border-b border-[#374151]">
-                        <th className="text-left py-3 px-4 text-gray-400 font-medium">Empleado</th>
-                        <th className="text-left py-3 px-4 text-gray-400 font-medium">Entrada</th>
-                        <th className="text-left py-3 px-4 text-gray-400 font-medium">Salida</th>
-                        <th className="text-left py-3 px-4 text-gray-400 font-medium">Horas</th>
-                        <th className="text-left py-3 px-4 text-gray-400 font-medium">Estado</th>
-                      </tr>
-                    </thead>
+                    <thead><tr><Th>Empleado</Th><Th>Entrada</Th><Th>Salida</Th><Th>Horas</Th><Th>Estado</Th></tr></thead>
                     <tbody>
-                      {attendance.map((att) => (
-                        <tr key={att.id} className="border-b border-[#374151]/50 hover:bg-[#374151]/20">
-                          <td className="py-3 px-4 text-white font-medium">{att.username}</td>
-                          <td className="py-3 px-4 text-cyan-400">
-                            {att.clock_in ? new Date(att.clock_in).toLocaleTimeString('es-PR', { hour: '2-digit', minute: '2-digit' }) : '-'}
-                          </td>
-                          <td className="py-3 px-4 text-orange-400">
-                            {att.clock_out ? new Date(att.clock_out).toLocaleTimeString('es-PR', { hour: '2-digit', minute: '2-digit' }) : 'Activo'}
-                          </td>
-                          <td className="py-3 px-4 text-gray-300">
-                            {att.total_hours ? `${att.total_hours.toFixed(1)}h` : '-'}
-                          </td>
-                          <td className="py-3 px-4">
-                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                              att.clock_out ? 'bg-gray-500/20 text-gray-400' : 'bg-green-500/20 text-green-400'
-                            }`}>
-                              {att.clock_out ? 'Finalizado' : 'En linea'}
-                            </span>
-                          </td>
+                      {attendance.map(a => (
+                        <tr key={a.id} className="transition-colors hover:bg-white/[0.02]">
+                          <Td><span className="font-medium">{a.username}</span></Td>
+                          <Td><span style={{ color:'#67e8f9' }}>{fmtTime(a.clock_in)}</span></Td>
+                          <Td><span style={{ color: a.clock_out ? '#fb923c' : '#86efac' }}>{a.clock_out ? fmtTime(a.clock_out) : 'Activo'}</span></Td>
+                          <Td muted>{a.total_hours ? `${a.total_hours.toFixed(1)}h` : '-'}</Td>
+                          <Td><span className={`badge ${a.clock_out ? 'badge-gray' : 'badge-green'}`}>{a.clock_out ? 'Finalizado' : 'En línea'}</span></Td>
                         </tr>
                       ))}
                     </tbody>
@@ -604,54 +277,32 @@ const Admin = () => {
               )}
             </div>
 
-            {/* Breaks de Hoy */}
-            <div className="bg-[#1f2937] rounded-xl p-6 border border-[#374151]">
-              <div className="flex items-center gap-3 mb-6">
-                <svg className="w-6 h-6 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                <h2 className="text-lg font-semibold">Breaks de Hoy</h2>
-                <span className="bg-orange-500/20 text-orange-400 px-3 py-1 rounded-full text-sm">
-                  {breaks.length} breaks
-                </span>
+            {/* Breaks */}
+            <div className="card p-5">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background:'rgba(249,115,22,0.1)', border:'1px solid rgba(249,115,22,0.2)' }}>
+                  <svg className="w-4 h-4" style={{ color:'#f97316' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </div>
+                <p className="font-semibold">Breaks de Hoy</p>
+                <span className="badge badge-orange ml-auto">{breaks.length} breaks</span>
               </div>
-
               {breaks.length === 0 ? (
-                <p className="text-gray-400 text-center py-4">No hay breaks registrados hoy</p>
+                <p className="text-sm text-center py-6" style={{ color:'#475569' }}>Sin breaks registrados hoy</p>
               ) : (
                 <div className="overflow-x-auto">
                   <table className="w-full">
-                    <thead>
-                      <tr className="border-b border-[#374151]">
-                        <th className="text-left py-3 px-4 text-gray-400 font-medium">Empleado</th>
-                        <th className="text-left py-3 px-4 text-gray-400 font-medium">Tipo</th>
-                        <th className="text-left py-3 px-4 text-gray-400 font-medium">Inicio</th>
-                        <th className="text-left py-3 px-4 text-gray-400 font-medium">Fin</th>
-                        <th className="text-left py-3 px-4 text-gray-400 font-medium">Duracion</th>
-                        <th className="text-left py-3 px-4 text-gray-400 font-medium">Estado</th>
-                      </tr>
-                    </thead>
+                    <thead><tr><Th>Empleado</Th><Th>Tipo</Th><Th>Inicio</Th><Th>Fin</Th><Th>Duración</Th><Th>Estado</Th></tr></thead>
                     <tbody>
-                      {breaks.map((brk) => (
-                        <tr key={brk.id} className="border-b border-[#374151]/50 hover:bg-[#374151]/20">
-                          <td className="py-3 px-4 text-white font-medium">{brk.username}</td>
-                          <td className="py-3 px-4 text-cyan-400">{brk.break_type_name || brk.type}</td>
-                          <td className="py-3 px-4 text-gray-300">
-                            {brk.start_time ? new Date(brk.start_time).toLocaleTimeString('es-PR', { hour: '2-digit', minute: '2-digit' }) : '-'}
-                          </td>
-                          <td className="py-3 px-4 text-gray-300">
-                            {brk.end_time ? new Date(brk.end_time).toLocaleTimeString('es-PR', { hour: '2-digit', minute: '2-digit' }) : '-'}
-                          </td>
-                          <td className="py-3 px-4 text-gray-300">
-                            {brk.duration_minutes ? `${brk.duration_minutes} min` : '-'}
-                          </td>
-                          <td className="py-3 px-4">
-                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                              brk.end_time ? 'bg-green-500/20 text-green-400' : 'bg-orange-500/20 text-orange-400'
-                            }`}>
-                              {brk.end_time ? 'Completado' : 'En break'}
-                            </span>
-                          </td>
+                      {breaks.map(b => (
+                        <tr key={b.id} className="transition-colors hover:bg-white/[0.02]">
+                          <Td><span className="font-medium">{b.username}</span></Td>
+                          <Td><span style={{ color:'#67e8f9' }}>{b.break_type_name || b.type}</span></Td>
+                          <Td muted>{fmtTime(b.start_time)}</Td>
+                          <Td muted>{fmtTime(b.end_time)}</Td>
+                          <Td muted>{b.duration_minutes ? `${b.duration_minutes} min` : '-'}</Td>
+                          <Td><span className={`badge ${b.end_time ? 'badge-green' : 'badge-orange'}`}>{b.end_time ? 'Completado' : 'En break'}</span></Td>
                         </tr>
                       ))}
                     </tbody>
@@ -662,123 +313,78 @@ const Admin = () => {
           </div>
         )}
 
-        {/* Tab: Crear Usuario */}
+        {/* ══════════════════════════════════════════
+            TAB: USUARIOS
+        ══════════════════════════════════════════ */}
         {activeTab === 'users' && (
-          <div className="space-y-6">
-            {/* Formulario de creacion */}
-            <div className="bg-[#1f2937] rounded-xl p-6 border border-[#374151]">
-              <div className="flex items-center gap-3 mb-6">
-                <UsersIcon />
-                <h2 className="text-lg font-semibold">Crear Nuevo Usuario</h2>
-              </div>
+          <div className="py-5 space-y-5 animate-fade-up">
 
+            {/* Crear usuario */}
+            <div className="card p-5">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background:'rgba(6,182,212,0.1)', border:'1px solid rgba(6,182,212,0.2)' }}>
+                  <svg className="w-4 h-4" style={{ color:'#06b6d4' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+                  </svg>
+                </div>
+                <p className="font-semibold">Crear Nuevo Empleado</p>
+              </div>
               <form onSubmit={handleCreateUser} className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">
-                      Nombre de Usuario
-                    </label>
-                    <input
-                      type="text"
-                      value={userForm.username}
-                      onChange={(e) => setUserForm({ ...userForm, username: e.target.value })}
-                      className="w-full bg-[#111111] border border-[#374151] rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-cyan-500 transition-colors"
-                      placeholder="usuario123"
-                      required
-                    />
+                    <label className="block text-xs font-medium mb-1.5" style={{ color:'#94a3b8' }}>Nombre de usuario</label>
+                    <input type="text" value={userForm.username} onChange={e=>setUserForm({...userForm,username:e.target.value})} className="field" placeholder="empleado123" required />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">
-                      Correo Electronico (opcional)
-                    </label>
-                    <input
-                      type="email"
-                      value={userForm.email}
-                      onChange={(e) => setUserForm({ ...userForm, email: e.target.value })}
-                      className="w-full bg-[#111111] border border-[#374151] rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-cyan-500 transition-colors"
-                      placeholder="usuario@email.com"
-                    />
+                    <label className="block text-xs font-medium mb-1.5" style={{ color:'#94a3b8' }}>Email <span style={{ color:'#334155' }}>(opcional)</span></label>
+                    <input type="email" value={userForm.email} onChange={e=>setUserForm({...userForm,email:e.target.value})} className="field" placeholder="correo@empresa.com" />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">
-                      Contrasena
-                    </label>
-                    <input
-                      type="password"
-                      value={userForm.password}
-                      onChange={(e) => setUserForm({ ...userForm, password: e.target.value })}
-                      className="w-full bg-[#111111] border border-[#374151] rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-cyan-500 transition-colors"
-                      placeholder="********"
-                      required
-                    />
+                    <label className="block text-xs font-medium mb-1.5" style={{ color:'#94a3b8' }}>Contraseña</label>
+                    <input type="password" value={userForm.password} onChange={e=>setUserForm({...userForm,password:e.target.value})} className="field" placeholder="••••••••" required />
                   </div>
                 </div>
-                <button
-                  type="submit"
-                  disabled={isCreatingUser}
-                  className="bg-cyan-600 hover:bg-cyan-700 disabled:bg-gray-600 text-white px-6 py-3 rounded-lg font-semibold transition-colors"
-                >
-                  {isCreatingUser ? 'Creando...' : 'Crear Usuario'}
+                <button type="submit" disabled={isCreating} className="btn btn-primary">
+                  {isCreating ? <><svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>Creando...</> : 'Crear Empleado'}
                 </button>
               </form>
             </div>
 
-            {/* Lista de usuarios */}
-            <div className="bg-[#1f2937] rounded-xl p-6 border border-[#374151]">
-              <h2 className="text-lg font-semibold mb-4">Usuarios Existentes</h2>
+            {/* Lista usuarios */}
+            <div className="card p-5">
+              <p className="font-semibold mb-4">Empleados Registrados <span className="text-xs ml-2" style={{ color:'#475569' }}>({users.length})</span></p>
               {users.length === 0 ? (
-                <p className="text-gray-400 text-center py-4">No hay usuarios registrados</p>
+                <p className="text-sm text-center py-6" style={{ color:'#475569' }}>Sin usuarios registrados</p>
               ) : (
                 <div className="overflow-x-auto">
                   <table className="w-full">
-                    <thead>
-                      <tr className="border-b border-[#374151]">
-                        <th className="text-left py-3 px-4 text-gray-400 font-medium">Usuario</th>
-                        <th className="text-left py-3 px-4 text-gray-400 font-medium">Email</th>
-                        <th className="text-left py-3 px-4 text-gray-400 font-medium">Rol</th>
-                        <th className="text-left py-3 px-4 text-gray-400 font-medium">Creado</th>
-                        <th className="text-left py-3 px-4 text-gray-400 font-medium">Acciones</th>
-                      </tr>
-                    </thead>
+                    <thead><tr><Th>Usuario</Th><Th>Email</Th><Th>Rol</Th><Th>Creado</Th><Th>Acciones</Th></tr></thead>
                     <tbody>
-                      {users.map((user) => (
-                        <tr key={user.id} className="border-b border-[#374151]/50 hover:bg-[#374151]/20">
-                          <td className="py-3 px-4 text-white font-medium">{user.username}</td>
-                          <td className="py-3 px-4 text-gray-300">{user.email || 'N/A'}</td>
-                          <td className="py-3 px-4">
-                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                              user.role === 'admin'
-                                ? 'bg-purple-500/20 text-purple-400'
-                                : 'bg-cyan-500/20 text-cyan-400'
-                            }`}>
-                              {user.role === 'admin' ? 'Admin' : 'Empleado'}
-                            </span>
-                          </td>
-                          <td className="py-3 px-4 text-gray-400">{formatDate(user.created_at)}</td>
-                          <td className="py-3 px-4">
-                            <div className="flex gap-2">
-                              <button
-                                onClick={() => handleEditUser(user)}
-                                className="p-1.5 bg-cyan-600/20 hover:bg-cyan-600 text-cyan-400 hover:text-white rounded transition-colors"
-                                title="Editar"
-                              >
-                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                                </svg>
+                      {users.map(u => (
+                        <tr key={u.id} className="transition-colors hover:bg-white/[0.02]">
+                          <Td>
+                            <div className="flex items-center gap-2.5">
+                              <div className="w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold" style={{ background:`${u.role==='admin'?'rgba(168,85,247,0.15)':'rgba(6,182,212,0.1)'}`, border:`1px solid ${u.role==='admin'?'rgba(168,85,247,0.25)':'rgba(6,182,212,0.2)'}`, color:u.role==='admin'?'#c084fc':'#67e8f9' }}>
+                                {u.username?.charAt(0).toUpperCase()}
+                              </div>
+                              <span className="font-medium">{u.username}</span>
+                            </div>
+                          </Td>
+                          <Td muted>{u.email || '—'}</Td>
+                          <Td><span className={`badge ${u.role==='admin'?'badge-blue':'badge-cyan'}`}>{u.role==='admin'?'Admin':'Empleado'}</span></Td>
+                          <Td muted>{fmtDate(u.created_at)}</Td>
+                          <Td>
+                            <div className="flex items-center gap-1.5">
+                              <button onClick={()=>{ setEditingUser(u); setEditForm({email:u.email||'',role:u.role}); }} className="btn btn-ghost px-2.5 py-1.5 text-xs">
+                                Editar
                               </button>
-                              {user.role !== 'admin' && (
-                                <button
-                                  onClick={() => handleDeleteUser(user)}
-                                  className="p-1.5 bg-red-600/20 hover:bg-red-600 text-red-400 hover:text-white rounded transition-colors"
-                                  title="Eliminar"
-                                >
-                                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                  </svg>
+                              {u.role !== 'admin' && (
+                                <button onClick={()=>handleDeleteUser(u)} className="btn btn-danger px-2.5 py-1.5 text-xs">
+                                  Eliminar
                                 </button>
                               )}
                             </div>
-                          </td>
+                          </Td>
                         </tr>
                       ))}
                     </tbody>
@@ -787,55 +393,36 @@ const Admin = () => {
               )}
             </div>
 
-            {/* Modal de Edicion */}
+            {/* Modal editar */}
             {editingUser && (
-              <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
-                <div className="bg-[#1f2937] rounded-xl p-6 border border-[#374151] w-full max-w-md mx-4">
-                  <h3 className="text-lg font-semibold mb-4">Editar Usuario: {editingUser.username}</h3>
-
+              <div className="modal-backdrop" onClick={e=>e.target===e.currentTarget&&setEditingUser(null)}>
+                <div className="modal p-6">
+                  <div className="flex items-center justify-between mb-5">
+                    <div>
+                      <h3 className="font-bold">Editar Usuario</h3>
+                      <p className="text-xs mt-0.5" style={{ color:'#475569' }}>{editingUser.username}</p>
+                    </div>
+                    <button onClick={()=>setEditingUser(null)} className="btn btn-ghost p-2">
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12"/></svg>
+                    </button>
+                  </div>
                   <div className="space-y-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-300 mb-2">
-                        Email
-                      </label>
-                      <input
-                        type="email"
-                        value={editForm.email}
-                        onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
-                        className="w-full bg-[#111111] border border-[#374151] rounded-lg px-4 py-3 text-white focus:outline-none focus:border-cyan-500"
-                        placeholder="correo@ejemplo.com"
-                      />
+                      <label className="block text-xs font-medium mb-1.5" style={{ color:'#94a3b8' }}>Email</label>
+                      <input type="email" value={editForm.email} onChange={e=>setEditForm({...editForm,email:e.target.value})} className="field" placeholder="correo@empresa.com" />
                     </div>
-
                     <div>
-                      <label className="block text-sm font-medium text-gray-300 mb-2">
-                        Rol
-                      </label>
-                      <select
-                        value={editForm.role}
-                        onChange={(e) => setEditForm({ ...editForm, role: e.target.value })}
-                        className="w-full bg-[#111111] border border-[#374151] rounded-lg px-4 py-3 text-white focus:outline-none focus:border-cyan-500"
-                      >
+                      <label className="block text-xs font-medium mb-1.5" style={{ color:'#94a3b8' }}>Rol</label>
+                      <select value={editForm.role} onChange={e=>setEditForm({...editForm,role:e.target.value})} className="field">
                         <option value="employee">Empleado</option>
                         <option value="supervisor">Supervisor</option>
                         <option value="admin">Admin</option>
                       </select>
                     </div>
                   </div>
-
-                  <div className="flex gap-3 mt-6">
-                    <button
-                      onClick={() => setEditingUser(null)}
-                      className="flex-1 bg-gray-600 hover:bg-gray-700 text-white py-2 rounded-lg font-medium transition-colors"
-                    >
-                      Cancelar
-                    </button>
-                    <button
-                      onClick={handleSaveEdit}
-                      className="flex-1 bg-cyan-600 hover:bg-cyan-700 text-white py-2 rounded-lg font-medium transition-colors"
-                    >
-                      Guardar
-                    </button>
+                  <div className="flex gap-3 mt-5">
+                    <button onClick={()=>setEditingUser(null)} className="btn btn-ghost flex-1">Cancelar</button>
+                    <button onClick={handleSaveEdit} className="btn btn-primary flex-1">Guardar</button>
                   </div>
                 </div>
               </div>
@@ -843,60 +430,46 @@ const Admin = () => {
           </div>
         )}
 
-        {/* Tab: Permisos */}
+        {/* ══════════════════════════════════════════
+            TAB: PERMISOS
+        ══════════════════════════════════════════ */}
         {activeTab === 'permissions' && (
-          <div className="space-y-4">
-            <div className="flex items-center gap-3 mb-4">
-              <ShieldIcon />
-              <h2 className="text-lg font-semibold">Solicitudes de Permisos Pendientes</h2>
-              <span className="bg-yellow-500/20 text-yellow-400 px-3 py-1 rounded-full text-sm">
-                {pendingPermissions.length} pendientes
-              </span>
+          <div className="py-5 space-y-5 animate-fade-up">
+            <div className="flex items-center gap-3">
+              <p className="font-semibold">Solicitudes Pendientes</p>
+              {pendingPerms.length > 0 && <span className="badge badge-yellow">{pendingPerms.length}</span>}
             </div>
 
-            {pendingPermissions.length === 0 ? (
-              <div className="bg-[#1f2937] rounded-xl p-8 border border-[#374151] text-center">
-                <ShieldIcon />
-                <p className="text-gray-400 mt-4">No hay solicitudes de permisos pendientes</p>
+            {pendingPerms.length === 0 ? (
+              <div className="card p-10 text-center">
+                <svg className="w-10 h-10 mx-auto mb-3 opacity-20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                </svg>
+                <p className="text-sm" style={{ color:'#475569' }}>Sin solicitudes pendientes</p>
               </div>
             ) : (
               <div className="space-y-3">
-                {pendingPermissions.map((permission) => (
-                  <div
-                    key={permission.id}
-                    className="bg-[#1f2937] rounded-xl p-5 border border-[#374151]"
-                  >
+                {pendingPerms.map(p => (
+                  <div key={p.id} className="card p-5">
                     <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                       <div className="flex-1">
-                        <div className="flex items-center gap-3 mb-2">
-                          <span className="text-white font-medium">
-                            {permission.username || permission.user?.username || 'Usuario'}
-                          </span>
-                          <span className="text-cyan-400 text-sm">
-                            {getPermissionTypeLabel(permission.type)}
-                          </span>
-                          {getStatusBadge(permission.status)}
+                        <div className="flex flex-wrap items-center gap-2 mb-1">
+                          <span className="font-semibold text-sm">{p.username || p.user?.username || 'Usuario'}</span>
+                          <span className="badge badge-cyan">{PERM_TYPE[p.type]||p.type}</span>
+                          <Bdg pair={PERM_STATUS[p.status]||PERM_STATUS.pending} />
                         </div>
-                        <p className="text-gray-300 mb-2">{permission.reason}</p>
-                        <p className="text-gray-500 text-sm">
-                          Fecha: {formatDate(permission.date_from || permission.date)}
-                          {permission.date_to && permission.date_to !== permission.date_from && ` - ${formatDate(permission.date_to)}`}
+                        <p className="text-sm mb-1" style={{ color:'#94a3b8' }}>{p.reason}</p>
+                        <p className="text-xs" style={{ color:'#475569' }}>
+                          {fmtDate(p.date_from||p.date)}
+                          {p.date_to && p.date_to !== p.date_from && ` → ${fmtDate(p.date_to)}`}
                         </p>
                       </div>
-                      <div className="flex gap-2">
-                        <button
-                          onClick={() => handleApprovePermission(permission.id)}
-                          className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium transition-colors"
-                        >
-                          <CheckIcon />
-                          Aprobar
+                      <div className="flex gap-2 flex-shrink-0">
+                        <button onClick={()=>approvePerm(p.id)} className="btn text-sm px-4 py-2" style={{ background:'rgba(34,197,94,0.12)', color:'#86efac', border:'1px solid rgba(34,197,94,0.2)' }}>
+                          ✓ Aprobar
                         </button>
-                        <button
-                          onClick={() => handleRejectPermission(permission.id)}
-                          className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg font-medium transition-colors"
-                        >
-                          <XIcon />
-                          Rechazar
+                        <button onClick={()=>rejectPerm(p.id)} className="btn btn-danger text-sm px-4 py-2">
+                          ✕ Rechazar
                         </button>
                       </div>
                     </div>
@@ -905,105 +478,87 @@ const Admin = () => {
               </div>
             )}
 
-            {/* Historial de permisos */}
-            {permissions.filter(p => p.status !== 'pending').length > 0 && (
-              <div className="mt-8">
-                <h3 className="text-md font-semibold text-gray-400 mb-4">Historial de Permisos</h3>
+            {/* Historial */}
+            {permissions.filter(p=>p.status!=='pending').length > 0 && (
+              <div>
+                <p className="text-xs font-semibold mb-3 tracking-wider" style={{ color:'#334155' }}>HISTORIAL</p>
                 <div className="space-y-2">
-                  {permissions.filter(p => p.status !== 'pending').map((permission) => (
-                    <div
-                      key={permission.id}
-                      className="bg-[#1f2937]/50 rounded-lg p-4 border border-[#374151]/50"
-                    >
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <span className="text-white font-medium">
-                            {permission.username || permission.user?.username || 'Usuario'}
-                          </span>
-                          <span className="text-gray-400 text-sm ml-2">
-                            - {getPermissionTypeLabel(permission.type)}
-                          </span>
+                  {permissions.filter(p=>p.status!=='pending').map(p => {
+                    const st = PERM_STATUS[p.status]||PERM_STATUS.pending;
+                    return (
+                      <div key={p.id} className="card px-4 py-3 flex items-center justify-between" style={{ opacity:.75 }}>
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium text-sm">{p.username||'Usuario'}</span>
+                          <span className="text-xs" style={{ color:'#475569' }}>— {PERM_TYPE[p.type]||p.type}</span>
                         </div>
-                        {getStatusBadge(permission.status)}
+                        <Bdg pair={st} />
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             )}
           </div>
         )}
 
-        {/* Tab: Incidentes */}
+        {/* ══════════════════════════════════════════
+            TAB: INCIDENTES
+        ══════════════════════════════════════════ */}
         {activeTab === 'incidents' && (
-          <div className="space-y-4">
-            <div className="flex items-center gap-3 mb-4">
-              <AlertIcon />
-              <h2 className="text-lg font-semibold">Incidentes Reportados</h2>
-              <span className="bg-red-500/20 text-red-400 px-3 py-1 rounded-full text-sm">
-                {incidents.filter(i => i.status === 'open' || i.status === 'pending').length} pendientes
-              </span>
+          <div className="py-5 space-y-5 animate-fade-up">
+            <div className="flex items-center gap-3">
+              <p className="font-semibold">Incidentes Reportados</p>
+              {openIncs > 0 && <span className="badge badge-red">{openIncs} abiertos</span>}
             </div>
 
             {incidents.length === 0 ? (
-              <div className="bg-[#1f2937] rounded-xl p-8 border border-[#374151] text-center">
-                <AlertIcon />
-                <p className="text-gray-400 mt-4">No hay incidentes reportados</p>
+              <div className="card p-10 text-center">
+                <svg className="w-10 h-10 mx-auto mb-3 opacity-20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+                <p className="text-sm" style={{ color:'#475569' }}>Sin incidentes reportados</p>
               </div>
             ) : (
               <div className="space-y-3">
-                {incidents.map((incident) => (
-                  <div
-                    key={incident.id}
-                    className="bg-[#1f2937] rounded-xl p-5 border border-[#374151]"
-                  >
-                    <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-3 mb-2 flex-wrap">
-                          <span className="text-white font-medium">
-                            {incident.username || incident.user?.username || 'Usuario'}
-                          </span>
-                          <span className="text-cyan-400 text-sm">
-                            {getIncidentTypeLabel(incident.type)}
-                          </span>
-                          {getStatusBadge(incident.status, 'incident')}
-                          {incident.priority && getPriorityBadge(incident.priority)}
+                {incidents.map(inc => {
+                  const st = INC_STATUS[inc.status]||INC_STATUS.open;
+                  const pr = INC_PRI[inc.priority]||INC_PRI.medium;
+                  return (
+                    <div key={inc.id} className="card p-5">
+                      <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
+                        <div className="flex-1">
+                          <div className="flex flex-wrap items-center gap-2 mb-2">
+                            <span className="font-semibold text-sm">{inc.username||inc.user?.username||'Usuario'}</span>
+                            <span className="text-xs" style={{ color:'#475569' }}>{INC_TYPE[inc.type||inc.category]||'Otro'}</span>
+                            <Bdg pair={st} />
+                            <Bdg pair={pr} />
+                          </div>
+                          {inc.title && <p className="font-medium text-sm mb-1">{inc.title}</p>}
+                          <p className="text-sm leading-relaxed" style={{ color:'#64748b' }}>{inc.description}</p>
+                          <p className="text-xs mt-2" style={{ color:'#334155' }}>{fmtDate(inc.created_at)}</p>
                         </div>
-                        {incident.title && (
-                          <h3 className="text-white font-semibold mb-1">{incident.title}</h3>
-                        )}
-                        <p className="text-gray-300 mb-2">{incident.description}</p>
-                        <p className="text-gray-500 text-sm">
-                          Reportado: {formatDate(incident.created_at)}
-                        </p>
-                      </div>
-                      <div className="flex gap-2 flex-wrap">
-                        {(incident.status === 'open' || incident.status === 'pending') && (
-                          <button
-                            onClick={() => handleUpdateIncidentStatus(incident.id, 'in_review')}
-                            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors text-sm"
-                          >
-                            En Revision
-                          </button>
-                        )}
-                        {incident.status !== 'resolved' && (
-                          <button
-                            onClick={() => handleUpdateIncidentStatus(incident.id, 'resolved')}
-                            className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium transition-colors text-sm"
-                          >
-                            <CheckIcon />
-                            Resuelto
-                          </button>
-                        )}
+                        <div className="flex gap-2 flex-shrink-0 flex-wrap">
+                          {(inc.status==='open'||inc.status==='pending') && (
+                            <button onClick={()=>updateInc(inc.id,'in_review')} className="btn text-xs px-3 py-2" style={{ background:'rgba(59,130,246,0.12)', color:'#93c5fd', border:'1px solid rgba(59,130,246,0.2)' }}>
+                              En Revisión
+                            </button>
+                          )}
+                          {inc.status !== 'resolved' && (
+                            <button onClick={()=>updateInc(inc.id,'resolved')} className="btn text-xs px-3 py-2" style={{ background:'rgba(34,197,94,0.12)', color:'#86efac', border:'1px solid rgba(34,197,94,0.2)' }}>
+                              ✓ Resuelto
+                            </button>
+                          )}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>
         )}
-      </main>
+
+      </div>
     </div>
   );
 };

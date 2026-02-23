@@ -2,35 +2,14 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getNotes, createNote, updateNote, deleteNote } from '../services/notes';
 
-const ArrowLeftIcon = () => (
-  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-  </svg>
-);
-
-const PlusIcon = () => (
-  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-  </svg>
-);
-
-const EditIcon = () => (
-  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-  </svg>
-);
-
-const TrashIcon = () => (
-  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-  </svg>
-);
-
-const CloseIcon = () => (
-  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-  </svg>
-);
+const NOTE_COLORS = [
+  { bg: 'rgba(6,182,212,0.07)',   border: 'rgba(6,182,212,0.18)',   dot: '#06b6d4' },
+  { bg: 'rgba(129,140,248,0.07)', border: 'rgba(129,140,248,0.18)', dot: '#818cf8' },
+  { bg: 'rgba(249,115,22,0.07)',  border: 'rgba(249,115,22,0.18)',  dot: '#f97316' },
+  { bg: 'rgba(34,197,94,0.07)',   border: 'rgba(34,197,94,0.18)',   dot: '#22c55e' },
+  { bg: 'rgba(234,179,8,0.07)',   border: 'rgba(234,179,8,0.18)',   dot: '#eab308' },
+  { bg: 'rgba(239,68,68,0.07)',   border: 'rgba(239,68,68,0.18)',   dot: '#ef4444' },
+];
 
 const Notes = () => {
   const navigate = useNavigate();
@@ -40,204 +19,139 @@ const Notes = () => {
   const [editingNote, setEditingNote] = useState(null);
   const [noteForm, setNoteForm] = useState({ title: '', content: '' });
 
-  useEffect(() => {
-    loadNotes();
-  }, []);
+  useEffect(() => { loadNotes(); }, []);
 
   const loadNotes = async () => {
     try {
       const data = await getNotes();
       setNotes(data.notes || data || []);
-    } catch (error) {
-      console.error('Error cargando notas:', error);
-    } finally {
-      setIsLoading(false);
-    }
+    } catch {} finally { setIsLoading(false); }
   };
 
-  const openCreateModal = () => {
-    setEditingNote(null);
-    setNoteForm({ title: '', content: '' });
-    setShowModal(true);
-  };
-
-  const openEditModal = (note) => {
-    setEditingNote(note);
-    setNoteForm({ title: note.title, content: note.content });
-    setShowModal(true);
-  };
-
-  const closeModal = () => {
-    setShowModal(false);
-    setEditingNote(null);
-    setNoteForm({ title: '', content: '' });
-  };
+  const openCreate = () => { setEditingNote(null); setNoteForm({ title: '', content: '' }); setShowModal(true); };
+  const openEdit = (n) => { setEditingNote(n); setNoteForm({ title: n.title, content: n.content }); setShowModal(true); };
+  const closeModal = () => { setShowModal(false); setEditingNote(null); setNoteForm({ title: '', content: '' }); };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!noteForm.title.trim()) return;
-
     try {
-      if (editingNote) {
-        await updateNote(editingNote.id, noteForm);
-      } else {
-        await createNote(noteForm);
-      }
+      if (editingNote) await updateNote(editingNote.id, noteForm);
+      else await createNote(noteForm);
       closeModal();
       await loadNotes();
-    } catch (error) {
-      console.error('Error guardando nota:', error);
-    }
+    } catch {}
   };
 
   const handleDelete = async (id) => {
-    if (!window.confirm('Estas seguro de eliminar esta nota?')) return;
-    try {
-      await deleteNote(id);
-      await loadNotes();
-    } catch (error) {
-      console.error('Error eliminando nota:', error);
-    }
+    if (!window.confirm('¿Eliminar esta nota?')) return;
+    try { await deleteNote(id); await loadNotes(); } catch {}
   };
 
-  const formatDate = (dateStr) => {
-    const date = new Date(dateStr);
-    return date.toLocaleDateString('es-ES', {
-      day: 'numeric',
-      month: 'short',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
-  };
+  const fmtDate = (ds) => new Date(ds).toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' });
+  const getColor = (id) => NOTE_COLORS[(id || 0) % NOTE_COLORS.length];
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] text-white">
-      {/* Header */}
-      <header className="bg-[#111111] border-b border-gray-800 px-6 py-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <button
-              onClick={() => navigate('/')}
-              className="p-2 hover:bg-[#1f2937] rounded-lg transition-colors"
-            >
-              <ArrowLeftIcon />
+    <div className="min-h-screen" style={{ background: '#070b12', color: '#f1f5f9' }}>
+
+      <header className="page-header">
+        <div className="px-5 py-3.5 flex items-center justify-between max-w-5xl mx-auto">
+          <div className="flex items-center gap-3">
+            <button onClick={() => navigate('/')} className="btn btn-ghost p-2">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+              </svg>
             </button>
-            <h1 className="text-xl font-bold">Mis Notas</h1>
+            <div>
+              <h1 className="font-bold">Mis Notas</h1>
+              <p className="text-xs" style={{ color: '#475569' }}>{notes.length} notas guardadas</p>
+            </div>
           </div>
-          <button
-            onClick={openCreateModal}
-            className="bg-cyan-600 hover:bg-cyan-700 text-white px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2"
-          >
-            <PlusIcon />
+          <button onClick={openCreate} className="btn btn-primary">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+            </svg>
             Nueva Nota
           </button>
         </div>
       </header>
 
-      <main className="max-w-4xl mx-auto px-6 py-8">
-        {/* Lista de notas */}
+      <main className="max-w-5xl mx-auto px-5 py-6">
         {isLoading ? (
-          <div className="text-center text-gray-400 py-8">Cargando notas...</div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {[1,2,3,4,5,6].map(i => <div key={i} className="skeleton h-40 rounded-2xl" />)}
+          </div>
         ) : notes.length === 0 ? (
-          <div className="text-center text-gray-400 py-8">
-            <p className="text-lg">No tienes notas</p>
-            <p className="text-sm mt-2">Crea una nueva nota para comenzar</p>
+          <div className="flex flex-col items-center justify-center py-24 text-center">
+            <div className="w-14 h-14 rounded-2xl mb-4 flex items-center justify-center" style={{ background: 'rgba(6,182,212,0.1)', border: '1px solid rgba(6,182,212,0.15)' }}>
+              <svg className="w-7 h-7" style={{ color: '#06b6d4', opacity: .7 }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+              </svg>
+            </div>
+            <p className="font-semibold" style={{ color: '#475569' }}>Sin notas aún</p>
+            <p className="text-sm mt-1" style={{ color: '#334155' }}>Crea tu primera nota para comenzar</p>
+            <button onClick={openCreate} className="btn btn-primary mt-5 text-sm">+ Crear nota</button>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {notes.map((note) => (
-              <div
-                key={note.id}
-                className="bg-[#1f2937] rounded-xl p-5 border border-[#374151] hover:border-cyan-500/50 transition-colors"
-              >
-                <h3 className="font-semibold text-lg mb-2 text-white">{note.title}</h3>
-                <p className="text-gray-400 text-sm mb-4 line-clamp-3">
-                  {note.content || 'Sin contenido'}
-                </p>
-                <div className="flex items-center justify-between">
-                  <span className="text-gray-500 text-xs">
-                    {formatDate(note.created_at)}
-                  </span>
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => openEditModal(note)}
-                      className="p-2 text-gray-400 hover:text-cyan-500 hover:bg-cyan-500/10 rounded-lg transition-colors"
-                    >
-                      <EditIcon />
-                    </button>
-                    <button
-                      onClick={() => handleDelete(note.id)}
-                      className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-colors"
-                    >
-                      <TrashIcon />
-                    </button>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 stagger">
+            {notes.map((note) => {
+              const c = getColor(note.id);
+              return (
+                <div key={note.id} className="rounded-2xl p-5 group animate-fade-up flex flex-col" style={{ background: c.bg, border: `1px solid ${c.border}`, minHeight: '160px' }}>
+                  <div className="flex items-start justify-between gap-2 mb-2">
+                    <div className="flex items-center gap-2">
+                      <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: c.dot }} />
+                      <h3 className="font-semibold text-sm leading-snug">{note.title}</h3>
+                    </div>
+                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all flex-shrink-0">
+                      <button onClick={() => openEdit(note)} className="p-1.5 rounded-lg hover:bg-white/10 transition-colors" style={{ color: '#64748b' }}>
+                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                        </svg>
+                      </button>
+                      <button onClick={() => handleDelete(note.id)} className="p-1.5 rounded-lg hover:bg-red-500/15 transition-colors" style={{ color: '#64748b' }}>
+                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                      </button>
+                    </div>
                   </div>
+                  <p className="text-xs leading-relaxed flex-1 line-clamp-4" style={{ color: '#64748b' }}>
+                    {note.content || 'Sin contenido'}
+                  </p>
+                  <p className="text-xs mt-3" style={{ color: '#334155' }}>{fmtDate(note.created_at)}</p>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </main>
 
-      {/* Modal */}
       {showModal && (
-        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 px-4">
-          <div className="bg-[#1f2937] rounded-xl p-6 w-full max-w-lg border border-[#374151]">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-bold">
-                {editingNote ? 'Editar Nota' : 'Nueva Nota'}
-              </h2>
-              <button
-                onClick={closeModal}
-                className="p-2 hover:bg-[#374151] rounded-lg transition-colors"
-              >
-                <CloseIcon />
+        <div className="modal-backdrop" onClick={(e) => e.target === e.currentTarget && closeModal()}>
+          <div className="modal p-6" style={{ maxWidth: '520px' }}>
+            <div className="flex items-center justify-between mb-5">
+              <h2 className="font-bold text-lg">{editingNote ? 'Editar Nota' : 'Nueva Nota'}</h2>
+              <button onClick={closeModal} className="btn btn-ghost p-2">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
               </button>
             </div>
-
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
-                  Titulo
-                </label>
-                <input
-                  type="text"
-                  value={noteForm.title}
-                  onChange={(e) => setNoteForm({ ...noteForm, title: e.target.value })}
-                  className="w-full bg-[#111111] border border-[#374151] rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-cyan-500 transition-colors"
-                  placeholder="Titulo de la nota"
-                  required
-                />
+                <label className="block text-xs font-medium mb-1.5" style={{ color: '#94a3b8' }}>Título</label>
+                <input type="text" value={noteForm.title} onChange={e => setNoteForm({...noteForm, title: e.target.value})}
+                  className="field" placeholder="Título de la nota" required autoFocus />
               </div>
-
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
-                  Contenido
-                </label>
-                <textarea
-                  value={noteForm.content}
-                  onChange={(e) => setNoteForm({ ...noteForm, content: e.target.value })}
-                  rows={6}
-                  className="w-full bg-[#111111] border border-[#374151] rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-cyan-500 transition-colors resize-none"
-                  placeholder="Escribe tu nota aqui..."
-                />
+                <label className="block text-xs font-medium mb-1.5" style={{ color: '#94a3b8' }}>Contenido</label>
+                <textarea value={noteForm.content} onChange={e => setNoteForm({...noteForm, content: e.target.value})}
+                  rows={7} className="field resize-none" placeholder="Escribe aquí..." />
               </div>
-
-              <div className="flex gap-3 pt-4">
-                <button
-                  type="button"
-                  onClick={closeModal}
-                  className="flex-1 bg-[#374151] hover:bg-[#4b5563] text-white py-3 rounded-lg font-medium transition-colors"
-                >
-                  Cancelar
-                </button>
-                <button
-                  type="submit"
-                  className="flex-1 bg-cyan-600 hover:bg-cyan-700 text-white py-3 rounded-lg font-medium transition-colors"
-                >
-                  {editingNote ? 'Guardar Cambios' : 'Crear Nota'}
-                </button>
+              <div className="flex gap-3 pt-1">
+                <button type="button" onClick={closeModal} className="btn btn-ghost flex-1">Cancelar</button>
+                <button type="submit" className="btn btn-primary flex-1">{editingNote ? 'Guardar' : 'Crear Nota'}</button>
               </div>
             </form>
           </div>
