@@ -227,6 +227,30 @@ router.post('/messages', (req, res) => {
   }
 });
 
+// DELETE /api/chat/conversation/:userId - Eliminar todos los mensajes con un usuario (admin)
+router.delete('/conversation/:userId', (req, res) => {
+  try {
+    const requesterId = req.user.id || req.user.userId;
+    const isAdmin = req.user.role === 'admin' || req.user.role === 'supervisor';
+
+    if (!isAdmin) {
+      return res.status(403).json({ success: false, message: 'Sin permisos' });
+    }
+
+    const otherUserId = parseInt(req.params.userId);
+
+    const deleted = db.deleteWhere('chat_messages', m =>
+      (m.from_user_id === requesterId && m.to_user_id === otherUserId) ||
+      (m.from_user_id === otherUserId && m.to_user_id === requesterId)
+    );
+
+    res.json({ success: true, message: `${deleted} mensajes eliminados` });
+  } catch (error) {
+    console.error('Error eliminando conversación:', error);
+    res.status(500).json({ success: false, message: 'Error interno del servidor' });
+  }
+});
+
 // GET /api/chat/unread - Conteo de no leidos
 router.get('/unread', (req, res) => {
   try {

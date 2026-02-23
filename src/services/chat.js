@@ -1,4 +1,4 @@
-import { get, post } from './api';
+import { get, post, del } from './api';
 
 export async function getConversations() {
   return get('/chat/conversations');
@@ -18,4 +18,8 @@ export async function getUnreadCount() {
   return get('/chat/unread');
 }
 
-export default { getConversations, getMessages, sendMessage, getUnreadCount };
+export async function deleteConversation(userId) {
+  return del(`/chat/conversation/${userId}`);
+}
+
+export default { getConversations, getMessages, sendMessage, getUnreadCount, deleteConversation };

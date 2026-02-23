@@ -107,13 +107,21 @@ const database = {
     return db[table][index];
   },
 
-  // Eliminar
+  // Eliminar por ID
   delete(table, id) {
     const index = db[table]?.findIndex(item => item.id === id);
     if (index === -1) return false;
     db[table].splice(index, 1);
     saveDb(db);
     return true;
+  },
+
+  // Eliminar múltiples registros que cumplan una condición
+  deleteWhere(table, predicate) {
+    const before = db[table]?.length || 0;
+    db[table] = db[table]?.filter(item => !predicate(item)) || [];
+    saveDb(db);
+    return before - db[table].length;
   },
 
   // Recargar desde archivo
