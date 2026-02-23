@@ -1,0 +1,88 @@
+{
+  "users": [
+    {
+      "id": 1,
+      "username": "rock",
+      "email": "rock@lovirtual.com",
+      "password": "$2a$10$9Dk9dcObPzZYCZo4cR6EFeGHZig5dHTpInP7q0ngvsLsJfZb3AYqK",
+      "role": "employee",
+      "avatar": null,
+      "created_at": "2026-01-28T07:12:13.330Z"
+    },
+    {
+      "id": 2,
+      "username": "admin",
+      "email": "admin@lovirtual.com",
+      "password": "$2a$10$ZZsAjHNFfXEODMmXOCDnk.8yEqnmlNQYVwn7HqsSE/.AAIxG92ijG",
+      "role": "admin",
+      "avatar": null,
+      "created_at": "2026-01-28T07:12:13.333Z"
+    },
+    {
+      "id": 3,
+      "username": "Armando",
+      "email": "arm@gmail.com",
+      "password": "$2a$10$.Wb.tmWi72/B4JaAgtIgXOZAx0FQTJQEKnpFEU0BaScLDqQw2kukq",
+      "role": "employee",
+      "avatar": null,
+      "created_at": "2026-01-28T07:56:59.225Z"
+    },
+    {
+      "id": 4,
+      "username": "Armando1",
+      "email": "armando@gmail.com",
+      "password": "$2a$10$U64cjpbQfnmC.ie0WOKRM.Yf4KxcPr6z4dTUyaVoNtV/LR7mmhGsK",
+      "role": "employee",
+      "avatar": null,
+      "created_at": "2026-01-28T08:00:25.216Z"
+    }
+  ],
+  "attendance": [
+    {
+      "id": 1,
+      "user_id": 1,
+      "clock_in": "2026-01-28T07:27:24.398Z",
+      "date": "2026-01-28",
+      "status": "present",
+      "created_at": "2026-01-28T07:27:24.399Z",
+      "clock_out": "2026-01-28T07:27:44.384Z",
+      "total_hours": 0.01,
+      "updated_at": "2026-01-28T07:27:44.384Z"
+    },
+    {
+      "id": 2,
+      "user_id": 2,
+      "clock_in": "2026-01-28T08:19:44.650Z",
+      "date": "2026-01-28",
+      "status": "present",
+      "created_at": "2026-01-28T08:19:44.650Z"
+    }
+  ],
+  "breaks": [
+    {
+      "id": 1,
+      "user_id": 2,
+      "type": "break_am",
+      "start_time": "2026-01-28T08:19:47.642Z",
+      "date": "2026-01-28",
+      "created_at": "2026-01-28T08:19:47.642Z",
+      "end_time": "2026-01-28T08:51:49.472Z",
+      "duration_minutes": 32,
+      "updated_at": "2026-01-28T08:51:49.472Z"
+    }
+  ],
+  "tasks": [],
+  "notes": [],
+  "incidents": [],
+  "permissions": [],
+  "announcements": [
+    {
+      "id": 1,
+      "title": "¡Bienvenidos!",
+      "content": "Hola. ¡Bienvenidos a LoVirtual! Gracias por ser parte de LoVirtual. Te apreciamos y estamos agradecidos de que seas parte de esta gran familia. Cualquier error que pueda presentar la plataforma, por favor reportarlo a su líder de equipo.",
+      "created_at": "2025-12-21T07:12:13.333Z"
+    }
+  ],
+  "chat_messages": [],
+  "daily_reports": []
+}
