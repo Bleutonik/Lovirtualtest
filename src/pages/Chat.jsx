@@ -197,7 +197,6 @@ export default function Chat() {
   const [sending,      setSending]      = useState(false);
 
   // Admin extras
-  const [hoveredConv,    setHoveredConv]    = useState(null);
   const [confirmDel,     setConfirmDel]     = useState(null); // userId
   const [showCompose,    setShowCompose]    = useState(false);
   const [composeUid,     setComposeUid]     = useState('');
@@ -320,7 +319,6 @@ export default function Chat() {
         lastIdRef.current = 0;
       }
       setConfirmDel(null);
-      setHoveredConv(null);
       fetchConvs();
     } catch { }
   };
@@ -423,12 +421,9 @@ export default function Chat() {
                 ? <p style={{ padding: '36px 14px', textAlign: 'center', fontSize: 12, color: '#374151' }}>Sin empleados</p>
                 : convs.map(conv => {
                     const active     = selUser?.userId === conv.userId;
-                    const hovered    = hoveredConv === conv.userId;
                     const confirming = confirmDel  === conv.userId;
                     return (
-                      <div key={conv.userId} style={{ position: 'relative' }}
-                        onMouseEnter={() => setHoveredConv(conv.userId)}
-                        onMouseLeave={() => { setHoveredConv(null); if (confirmDel === conv.userId) setConfirmDel(null); }}>
+                      <div key={conv.userId} style={{ position: 'relative' }}>
 
                         {/* Confirmación de borrado inline */}
                         {confirming && (
@@ -444,7 +439,7 @@ export default function Chat() {
                         <button onClick={() => selectUser(conv)} style={{
                           ...S.convBtn,
                           borderLeft: `2px solid ${active ? '#06b6d4' : 'transparent'}`,
-                          background: active ? 'rgba(6,182,212,0.07)' : hovered ? 'rgba(255,255,255,0.03)' : 'transparent',
+                          background: active ? 'rgba(6,182,212,0.07)' : 'transparent',
                         }}>
                           <div style={{ position: 'relative', flexShrink: 0 }}>
                             <Av name={conv.username} />
@@ -455,28 +450,21 @@ export default function Chat() {
                             )}
                           </div>
                           <div style={{ flex: 1, minWidth: 0 }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 4 }}>
-                              <span style={{ fontWeight: 500, fontSize: 13, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{conv.username}</span>
-                              {conv.lastMessage && !hovered && (
-                                <span style={{ fontSize: 10, color: '#374151', flexShrink: 0 }}>{fmtTime(conv.lastMessage.timestamp)}</span>
-                              )}
-                            </div>
+                            <span style={{ fontWeight: 500, fontSize: 13, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'block' }}>{conv.username}</span>
                             <p style={{ fontSize: 11, marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: conv.unreadCount > 0 ? '#94a3b8' : '#374151', fontWeight: conv.unreadCount > 0 ? 500 : 400 }}>
                               {conv.lastMessage
                                 ? (conv.lastMessage.fromMe ? 'Tú: ' : '') + conv.lastMessage.content
                                 : <span style={{ fontStyle: 'italic' }}>Sin mensajes</span>}
                             </p>
                           </div>
-                          {/* Botón trash — solo en hover */}
-                          {hovered && !confirming && (
-                            <button onClick={e => { e.stopPropagation(); setConfirmDel(conv.userId); }}
-                              title="Eliminar conversación"
-                              style={{ width: 28, height: 28, borderRadius: 7, border: '1px solid rgba(239,68,68,0.25)', background: 'rgba(239,68,68,0.08)', color: '#f87171', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, cursor: 'pointer' }}>
-                              <svg width={13} height={13} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                              </svg>
-                            </button>
-                          )}
+                          {/* Botón trash — siempre visible */}
+                          <button onClick={e => { e.stopPropagation(); setConfirmDel(conv.userId); }}
+                            title="Eliminar conversación"
+                            style={{ width: 28, height: 28, borderRadius: 7, border: '1px solid rgba(239,68,68,0.2)', background: 'rgba(239,68,68,0.06)', color: '#f87171', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, cursor: 'pointer' }}>
+                            <svg width={13} height={13} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                          </button>
                         </button>
                       </div>
                     );
@@ -523,7 +511,7 @@ export default function Chat() {
       </div>
 
       {/* Modal: eliminar conversación abierta (desde header del chat) */}
-      {confirmDel && confirmDel === selUser?.userId && hoveredConv !== confirmDel && (
+      {confirmDel && confirmDel === selUser?.userId && (
         <Modal onClose={() => setConfirmDel(null)}>
           <p style={{ fontWeight: 700, fontSize: 15, marginBottom: 6 }}>Eliminar conversación</p>
           <p style={{ fontSize: 13, color: '#64748b', marginBottom: 20 }}>
