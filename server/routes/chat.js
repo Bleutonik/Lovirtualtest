@@ -105,7 +105,7 @@ router.get('/messages/:userId', (req, res) => {
   try {
     const userId = req.user.id || req.user.userId;
     const otherUserId = parseInt(req.params.userId);
-    const { limit = 50 } = req.query;
+    const { limit = 50, since_id } = req.query;
 
     const users = db.getAll('users');
     const otherUser = users.find(u => u.id === otherUserId);
@@ -128,8 +128,13 @@ router.get('/messages/:userId', (req, res) => {
     // Ordenar por fecha ascendente
     messages.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
 
-    // Tomar los ultimos N mensajes
-    messages = messages.slice(-parseInt(limit));
+    // Polling incremental: solo mensajes con id > since_id
+    if (since_id) {
+      messages = messages.filter(m => m.id > parseInt(since_id));
+    } else {
+      // Carga inicial: ultimos N mensajes
+      messages = messages.slice(-parseInt(limit));
+    }
 
     // Agregar info
     messages = messages.map(m => ({
