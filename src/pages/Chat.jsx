@@ -3,9 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { getConversations, getMessages, sendMessage } from '../services/chat';
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Utilidades puras (fuera del componente = estables, nunca se recrean)
-// ─────────────────────────────────────────────────────────────────────────────
+// ── Utilidades ────────────────────────────────────────────────────────────────
 const fmtTime = ds =>
   new Date(ds).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
 
@@ -17,22 +15,10 @@ const fmtDate = ds => {
   return d.toLocaleDateString('es-ES', { day: 'numeric', month: 'long' });
 };
 
-const groupByDate = msgs => {
-  const g = {};
-  msgs.forEach(m => { const k = new Date(m.created_at).toDateString(); (g[k] = g[k] || []).push(m); });
-  return Object.entries(g);
-};
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Sub-componentes FUERA de Chat
-// Si estuvieran dentro, cada re-render crearía nuevas referencias de función
-// y React desmontaría/remontaría los nodos → el textarea perdería el foco
-// ─────────────────────────────────────────────────────────────────────────────
-
-const Av = ({ name = '?', sm = false }) => (
+// ── Sub-componentes FUERA de Chat ─────────────────────────────────────────────
+const Av = ({ name = '?', sm }) => (
   <div style={{
-    width: sm ? 30 : 38, height: sm ? 30 : 38,
-    borderRadius: '50%', flexShrink: 0,
+    width: sm ? 30 : 38, height: sm ? 30 : 38, borderRadius: '50%', flexShrink: 0,
     background: 'linear-gradient(135deg,#0ea5e9,#06b6d4)',
     display: 'flex', alignItems: 'center', justifyContent: 'center',
     fontWeight: 700, fontSize: sm ? 11 : 14, color: '#fff',
@@ -73,9 +59,7 @@ const Bubble = ({ msg, otherName, myName }) => {
 const DateBar = ({ label }) => (
   <div className="flex items-center gap-3 my-5">
     <div style={{ flex: 1, height: 1, background: 'rgba(255,255,255,0.06)' }} />
-    <span style={{ fontSize: 11, color: '#374151', padding: '3px 12px', borderRadius: 20, background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)', flexShrink: 0 }}>
-      {label}
-    </span>
+    <span style={{ fontSize: 11, color: '#374151', padding: '3px 12px', borderRadius: 20, background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)', flexShrink: 0 }}>{label}</span>
     <div style={{ flex: 1, height: 1, background: 'rgba(255,255,255,0.06)' }} />
   </div>
 );
@@ -103,9 +87,11 @@ const MsgShimmer = () => (
   </div>
 );
 
-// ChatInput DEBE estar fuera de Chat.
-// Al estar dentro, React lo desmonta en cada re-render → el textarea pierde foco.
-const ChatInput = ({ value, sending, taRef, onChange, onKeyDown, onSubmit }) => (
+// ── ChatInput: TEXTAREA NO-CONTROLADO ─────────────────────────────────────────
+// Sin prop "value" — el browser maneja el texto nativamente.
+// Esto elimina el bug donde React re-renderizaba el campo al actualizar
+// el estado y movía el foco/cursor después de cada letra.
+const ChatInput = ({ taRef, sending, canSend, onKeyDown, onSubmit, onInput }) => (
   <form
     onSubmit={onSubmit}
     style={{ display: 'flex', alignItems: 'flex-end', gap: 8, padding: '10px 14px', borderTop: '1px solid rgba(255,255,255,0.05)', background: '#07090f', flexShrink: 0 }}
@@ -113,8 +99,7 @@ const ChatInput = ({ value, sending, taRef, onChange, onKeyDown, onSubmit }) => 
     <textarea
       ref={taRef}
       rows={1}
-      value={value}
-      onChange={onChange}
+      onInput={onInput}
       onKeyDown={onKeyDown}
       placeholder="Escribe un mensaje…"
       style={{
@@ -129,10 +114,10 @@ const ChatInput = ({ value, sending, taRef, onChange, onKeyDown, onSubmit }) => 
     />
     <button
       type="submit"
-      disabled={sending || !value.trim()}
+      disabled={sending || !canSend}
       style={{
         width: 40, height: 40, borderRadius: 12, border: 'none', cursor: 'pointer',
-        background: (!sending && value.trim()) ? 'linear-gradient(135deg,#0ea5e9,#06b6d4)' : 'rgba(255,255,255,0.05)',
+        background: (!sending && canSend) ? 'linear-gradient(135deg,#0ea5e9,#06b6d4)' : 'rgba(255,255,255,0.05)',
         color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center',
         flexShrink: 0, transition: 'background .15s',
       }}
@@ -151,42 +136,36 @@ const ChatInput = ({ value, sending, taRef, onChange, onKeyDown, onSubmit }) => 
   </form>
 );
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Componente principal
-// ─────────────────────────────────────────────────────────────────────────────
+// ── Componente principal ──────────────────────────────────────────────────────
 export default function Chat() {
   const navigate = useNavigate();
   const { user } = useAuth();
-
-  // isAdmin derivado del contexto — disponible desde el primer render, sin flash
   const isAdmin = user?.role === 'admin' || user?.role === 'supervisor';
 
-  const [convs, setConvs] = useState([]);
-  const [selUser, setSelUser] = useState(null);
-  const [msgs, setMsgs] = useState([]);
-  const [input, setInput] = useState('');
+  const [convs, setConvs]           = useState([]);
+  const [selUser, setSelUser]       = useState(null);
+  const [msgs, setMsgs]             = useState([]);
+  const [canSend, setCanSend]       = useState(false); // solo cambia en transición vacío↔con texto
   const [convLoading, setConvLoading] = useState(true);
   const [msgsLoading, setMsgsLoading] = useState(false);
-  const [sending, setSending] = useState(false);
+  const [sending, setSending]       = useState(false);
 
-  // Refs (no causan re-renders)
-  const endRef = useRef(null);
-  const scrollRef = useRef(null);
-  const taRef = useRef(null);
-  const lastIdRef = useRef(0);    // id del último mensaje conocido (para polling incremental)
-  const selUidRef = useRef(null); // userId estable para el closure del setInterval
+  const endRef      = useRef(null);
+  const scrollRef   = useRef(null);
+  const taRef       = useRef(null);
+  const lastIdRef   = useRef(0);
+  const selUidRef   = useRef(null);
 
-  // Mantener selUidRef sincronizado
   useEffect(() => { selUidRef.current = selUser?.userId ?? null; }, [selUser?.userId]);
 
-  // ── Cargar conversaciones + poll cada 8s ──
+  // Conversaciones: carga + poll 8s
   useEffect(() => {
     fetchConvs();
     const iv = setInterval(fetchConvs, 8000);
     return () => clearInterval(iv);
   }, []);
 
-  // ── Carga inicial de mensajes + poll cada 2s cuando cambia el usuario ──
+  // Mensajes: carga completa + poll 2s cuando cambia el usuario seleccionado
   useEffect(() => {
     if (!selUser?.userId) return;
     lastIdRef.current = 0;
@@ -196,7 +175,7 @@ export default function Chat() {
     return () => clearInterval(iv);
   }, [selUser?.userId]);
 
-  // ── Auto-scroll solo si el usuario ya estaba al fondo ──
+  // Auto-scroll solo si el usuario ya estaba al fondo
   useEffect(() => {
     if (msgs.length && isNearBottom()) {
       endRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -205,15 +184,13 @@ export default function Chat() {
 
   const isNearBottom = () => {
     const c = scrollRef.current;
-    if (!c) return true;
-    return c.scrollHeight - c.scrollTop - c.clientHeight < 100;
+    return !c || (c.scrollHeight - c.scrollTop - c.clientHeight < 100);
   };
 
-  const scrollToEnd = (instant = false) =>
+  const scrollToEnd = (instant) =>
     endRef.current?.scrollIntoView({ behavior: instant ? 'instant' : 'smooth' });
 
-  // ── API ──────────────────────────────────────────────────────────────────
-
+  // ── API ───────────────────────────────────────────────────────────────────
   const fetchConvs = async () => {
     try {
       const res = await getConversations();
@@ -221,10 +198,9 @@ export default function Chat() {
       if (d.isAdmin) {
         setConvs(d.conversations || []);
       } else if (d.conversation) {
-        // Updater funcional: si el userId no cambió, React no re-renderiza nada
         setSelUser(prev => prev?.userId === d.conversation.userId ? prev : d.conversation);
       }
-    } catch { /* silencioso */ }
+    } catch { }
     finally { setConvLoading(false); }
   };
 
@@ -235,30 +211,28 @@ export default function Chat() {
       setMsgs(list);
       lastIdRef.current = list.length ? list[list.length - 1].id : 0;
       requestAnimationFrame(() => scrollToEnd(true));
-    } catch { /* silencioso */ }
+    } catch { }
     finally { setMsgsLoading(false); }
   };
 
-  // poll: solo trae mensajes nuevos. Si no hay nada nuevo → no hay setState → no hay re-render
+  // poll: si no hay mensajes nuevos no llama a setState → no re-renderiza
   const poll = async (uid) => {
     if (!uid) return;
     try {
       const res = await getMessages(uid, lastIdRef.current);
       const incoming = res?.data?.messages || [];
-      if (!incoming.length) return; // ← exit temprano, sin setState
-      const tagged = incoming.map(m => ({ ...m, _isNew: true }));
+      if (!incoming.length) return;
       setMsgs(prev => {
         const seen = new Set(prev.map(m => m.id));
-        const fresh = tagged.filter(m => !seen.has(m.id));
-        if (!fresh.length) return prev; // ← sin setState si ya los tenemos
+        const fresh = incoming.filter(m => !seen.has(m.id)).map(m => ({ ...m, _isNew: true }));
+        if (!fresh.length) return prev;
         lastIdRef.current = fresh[fresh.length - 1].id;
         return [...prev, ...fresh];
       });
-    } catch { /* silencioso */ }
+    } catch { }
   };
 
-  // ── Handlers ──────────────────────────────────────────────────────────────
-
+  // ── Handlers ─────────────────────────────────────────────────────────────
   const selectUser = (conv) => {
     if (conv.userId === selUser?.userId) return;
     setMsgs([]);
@@ -269,12 +243,15 @@ export default function Chat() {
 
   const handleSend = async (e) => {
     e?.preventDefault();
-    const content = input.trim();
+    const content = taRef.current?.value?.trim();
     if (!content || sending || !selUser) return;
-    setInput('');
+
+    // Limpiar textarea directamente en el DOM (sin React, sin re-render)
+    taRef.current.value = '';
+    taRef.current.style.height = '42px';
+    setCanSend(false);
     setSending(true);
 
-    // Mensaje optimista
     const tid = `t${Date.now()}`;
     const temp = { id: tid, content, fromMe: true, created_at: new Date().toISOString(), _sending: true, _isNew: true };
     setMsgs(prev => [...prev, temp]);
@@ -284,56 +261,56 @@ export default function Chat() {
       const res = await sendMessage(selUser.userId, content);
       const real = res?.data?.message;
       if (real) {
-        // Reemplaza el temp con el mensaje real (mismo lugar en la lista, sin re-animar)
         setMsgs(prev => prev.map(m => m.id === tid ? { ...real, fromMe: true, _isNew: false } : m));
         lastIdRef.current = real.id;
       } else {
-        // Fallback: recarga completa
         await loadAll(selUser.userId);
       }
     } catch {
       setMsgs(prev => prev.filter(m => m.id !== tid));
-      setInput(content);
+      // Restaurar texto fallido en el textarea
+      if (taRef.current) {
+        taRef.current.value = content;
+        setCanSend(true);
+      }
     } finally {
       setSending(false);
       taRef.current?.focus();
     }
   };
 
-  const onKeyDown = (e) => {
+  const handleKeyDown = (e) => {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); }
   };
 
-  const onInputChange = (e) => {
-    setInput(e.target.value);
+  // onInput: auto-resize + actualizar canSend solo en transición vacío↔con texto
+  const handleInput = (e) => {
     const el = e.target;
     el.style.height = 'auto';
     el.style.height = `${Math.min(el.scrollHeight, 120)}px`;
+    const hasContent = el.value.trim().length > 0;
+    setCanSend(prev => prev === hasContent ? prev : hasContent);
   };
 
-  // Props para el input (objeto estable pasado como spread)
-  const inputProps = { value: input, sending, taRef, onChange: onInputChange, onKeyDown, onSubmit: handleSend };
+  const inputProps = { taRef, sending, canSend, onKeyDown: handleKeyDown, onSubmit: handleSend, onInput: handleInput };
 
-  // Área de mensajes (JSX inline — NO un componente — para evitar desmontajes)
-  const msgsArea = (
-    <>
-      <div ref={scrollRef} style={{ flex: 1, overflowY: 'auto', padding: '12px 16px' }} className="chat-scroll">
-        {msgsLoading ? <MsgShimmer /> : msgs.length === 0
-          ? <EmptyConv name={selUser?.username || 'Admin'} />
-          : groupByDate(msgs).map(([dk, group]) => (
-              <div key={dk}>
-                <DateBar label={fmtDate(group[0].created_at)} />
-                {group.map(msg => (
-                  <Bubble key={msg.id} msg={msg} otherName={selUser?.username} myName={user?.username} />
-                ))}
-              </div>
-            ))
-        }
-        <div ref={endRef} style={{ height: 4 }} />
+  // ── Renders parciales (funciones, no componentes, para evitar desmontajes) ─
+  const renderMessages = () => {
+    if (msgsLoading) return <MsgShimmer />;
+    if (!msgs.length) return <EmptyConv name={selUser?.username || 'Admin'} />;
+
+    const groups = {};
+    msgs.forEach(m => { const k = new Date(m.created_at).toDateString(); (groups[k] = groups[k] || []).push(m); });
+
+    return Object.entries(groups).map(([dk, group]) => (
+      <div key={dk}>
+        <DateBar label={fmtDate(group[0].created_at)} />
+        {group.map(msg => (
+          <Bubble key={msg.id} msg={msg} otherName={selUser?.username} myName={user?.username} />
+        ))}
       </div>
-      <ChatInput {...inputProps} />
-    </>
-  );
+    ));
+  };
 
   // ── VISTA ADMIN ───────────────────────────────────────────────────────────
   if (isAdmin) return (
@@ -375,11 +352,7 @@ export default function Chat() {
                     const active = selUser?.userId === conv.userId;
                     return (
                       <button key={conv.userId} onClick={() => selectUser(conv)}
-                        style={{
-                          ...S.convBtn,
-                          borderLeft: `2px solid ${active ? '#06b6d4' : 'transparent'}`,
-                          background: active ? 'rgba(6,182,212,0.07)' : 'transparent',
-                        }}
+                        style={{ ...S.convBtn, borderLeft: `2px solid ${active ? '#06b6d4' : 'transparent'}`, background: active ? 'rgba(6,182,212,0.07)' : 'transparent' }}
                         onMouseEnter={e => { if (!active) e.currentTarget.style.background = 'rgba(255,255,255,0.03)'; }}
                         onMouseLeave={e => { if (!active) e.currentTarget.style.background = 'transparent'; }}>
                         <div style={{ position: 'relative' }}>
@@ -406,7 +379,7 @@ export default function Chat() {
           </div>
         </div>
 
-        {/* Panel de mensajes */}
+        {/* Panel de chat */}
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
           {!selUser
             ? <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 8, color: '#374151' }}>
@@ -423,7 +396,11 @@ export default function Chat() {
                     <p style={{ fontSize: 11, color: '#4b5563' }}>{selUser.email || 'Empleado'}</p>
                   </div>
                 </div>
-                {msgsArea}
+                <div ref={scrollRef} style={{ flex: 1, overflowY: 'auto', padding: '12px 16px' }} className="chat-scroll">
+                  {renderMessages()}
+                  <div ref={endRef} style={{ height: 4 }} />
+                </div>
+                <ChatInput {...inputProps} />
               </>
           }
         </div>
@@ -456,20 +433,26 @@ export default function Chat() {
           ? <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <p style={{ fontSize: 13, color: '#4b5563' }}>No hay administrador disponible</p>
             </div>
-          : msgsArea
+          : <>
+              <div ref={scrollRef} style={{ flex: 1, overflowY: 'auto', padding: '12px 16px' }} className="chat-scroll">
+                {renderMessages()}
+                <div ref={endRef} style={{ height: 4 }} />
+              </div>
+              <ChatInput {...inputProps} />
+            </>
       }
       <style>{CSS}</style>
     </div>
   );
 }
 
-// ── Estilos compartidos ───────────────────────────────────────────────────────
+// ── Estilos ───────────────────────────────────────────────────────────────────
 const S = {
-  screen: { display: 'flex', flexDirection: 'column', height: '100vh', background: '#070b12', color: '#f1f5f9', overflow: 'hidden' },
-  header: { display: 'flex', alignItems: 'center', gap: 12, padding: '11px 18px', background: '#0b0f1a', borderBottom: '1px solid rgba(255,255,255,0.05)', flexShrink: 0 },
+  screen:     { display: 'flex', flexDirection: 'column', height: '100vh', background: '#070b12', color: '#f1f5f9', overflow: 'hidden' },
+  header:     { display: 'flex', alignItems: 'center', gap: 12, padding: '11px 18px', background: '#0b0f1a', borderBottom: '1px solid rgba(255,255,255,0.05)', flexShrink: 0 },
   chatHeader: { display: 'flex', alignItems: 'center', gap: 10, padding: '10px 16px', background: '#0b0f1a', borderBottom: '1px solid rgba(255,255,255,0.05)', flexShrink: 0 },
-  sidebar: { width: 256, flexShrink: 0, display: 'flex', flexDirection: 'column', background: '#0b0f1a', borderRight: '1px solid rgba(255,255,255,0.05)', overflow: 'hidden' },
-  convBtn: { width: '100%', display: 'flex', alignItems: 'center', gap: 10, padding: '11px 14px', textAlign: 'left', border: 'none', cursor: 'pointer', borderBottom: '1px solid rgba(255,255,255,0.03)', transition: 'background .12s', color: '#f1f5f9', fontFamily: 'inherit' },
+  sidebar:    { width: 256, flexShrink: 0, display: 'flex', flexDirection: 'column', background: '#0b0f1a', borderRight: '1px solid rgba(255,255,255,0.05)', overflow: 'hidden' },
+  convBtn:    { width: '100%', display: 'flex', alignItems: 'center', gap: 10, padding: '11px 14px', textAlign: 'left', border: 'none', cursor: 'pointer', borderBottom: '1px solid rgba(255,255,255,0.03)', transition: 'background .12s', color: '#f1f5f9', fontFamily: 'inherit' },
 };
 
 const CSS = `
