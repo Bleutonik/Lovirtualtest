@@ -1,21 +1,30 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useLang } from '../context/LangContext';
 import * as api from '../services/api';
 
 const Tasks = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { t } = useLang();
   const [tasks, setTasks] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [newTask, setNewTask] = useState({ title: '', description: '' });
 
   const columns = [
-    { id: 'pending',     title: 'Por Hacer',   accent: '#06b6d4', bg: 'rgba(6,182,212,0.08)',   dot: '#06b6d4' },
-    { id: 'in_progress', title: 'En Progreso',  accent: '#f97316', bg: 'rgba(249,115,22,0.08)',  dot: '#f97316' },
-    { id: 'completed',   title: 'Completado',   accent: '#22c55e', bg: 'rgba(34,197,94,0.08)',   dot: '#22c55e' },
+    { id: 'pending',     accent: '#06b6d4', bg: 'rgba(6,182,212,0.08)',   dot: '#06b6d4' },
+    { id: 'in_progress', accent: '#f97316', bg: 'rgba(249,115,22,0.08)',  dot: '#f97316' },
+    { id: 'completed',   accent: '#22c55e', bg: 'rgba(34,197,94,0.08)',   dot: '#22c55e' },
   ];
+
+  const colTitle = (id) => {
+    if (id === 'pending')     return t('tasks.todo');
+    if (id === 'in_progress') return t('tasks.inProgress');
+    if (id === 'completed')   return t('tasks.done');
+    return id;
+  };
 
   useEffect(() => { loadTasks(); }, []);
 
@@ -49,7 +58,7 @@ const Tasks = () => {
   const fmtDate = (ds) => ds ? new Date(ds).toLocaleDateString('es-ES', { day: '2-digit', month: 'short' }) : '';
 
   return (
-    <div className="min-h-screen" style={{ background: '#070b12', color: '#f1f5f9' }}>
+    <div className="min-h-screen" style={{ background: 'var(--bg)', color: 'var(--text)' }}>
 
       {/* Header */}
       <header className="page-header">
@@ -61,15 +70,15 @@ const Tasks = () => {
               </svg>
             </button>
             <div>
-              <h1 className="font-bold">Mis Tareas</h1>
-              <p className="text-xs" style={{ color: '#475569' }}>{user?.username}</p>
+              <h1 className="font-bold">{t('tasks.title')}</h1>
+              <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{user?.username}</p>
             </div>
           </div>
           <button onClick={() => setShowForm(true)} className="btn btn-primary">
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
             </svg>
-            Nueva Tarea
+            {t('tasks.new')}
           </button>
         </div>
       </header>
@@ -79,7 +88,7 @@ const Tasks = () => {
         <div className="modal-backdrop" onClick={(e) => e.target === e.currentTarget && setShowForm(false)}>
           <div className="modal p-6">
             <div className="flex items-center justify-between mb-5">
-              <h2 className="font-bold text-lg">Nueva Tarea</h2>
+              <h2 className="font-bold text-lg">{t('tasks.new')}</h2>
               <button onClick={() => setShowForm(false)} className="btn btn-ghost p-2">
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -88,18 +97,18 @@ const Tasks = () => {
             </div>
             <form onSubmit={handleAddTask} className="space-y-4">
               <div>
-                <label className="block text-xs font-medium mb-1.5" style={{ color: '#94a3b8' }}>Título</label>
+                <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--text-muted)' }}>{t('tasks.titleField')}</label>
                 <input type="text" value={newTask.title} onChange={e => setNewTask({...newTask, title: e.target.value})}
-                  className="field" placeholder="¿Qué hay que hacer?" autoFocus required />
+                  className="field" placeholder={t('tasks.titlePlaceholder')} autoFocus required />
               </div>
               <div>
-                <label className="block text-xs font-medium mb-1.5" style={{ color: '#94a3b8' }}>Descripción <span style={{ color: '#334155' }}>(opcional)</span></label>
+                <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--text-muted)' }}>{t('tasks.description')} <span style={{ color: 'var(--text-dim)' }}>{t('common.optional')}</span></label>
                 <textarea value={newTask.description} onChange={e => setNewTask({...newTask, description: e.target.value})}
-                  rows={3} className="field resize-none" placeholder="Detalles adicionales..." />
+                  rows={3} className="field resize-none" placeholder={t('tasks.descPlaceholder')} />
               </div>
               <div className="flex gap-3 pt-1">
-                <button type="button" onClick={() => setShowForm(false)} className="btn btn-ghost flex-1">Cancelar</button>
-                <button type="submit" className="btn btn-primary flex-1">Crear Tarea</button>
+                <button type="button" onClick={() => setShowForm(false)} className="btn btn-ghost flex-1">{t('common.cancel')}</button>
+                <button type="submit" className="btn btn-primary flex-1">{t('tasks.creating')}</button>
               </div>
             </form>
           </div>
@@ -125,10 +134,10 @@ const Tasks = () => {
                 return (
                   <div key={col.id} className="card flex flex-col" style={{ minHeight: '420px' }}>
                     {/* Column header */}
-                    <div className="px-4 py-3 flex items-center gap-2.5" style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                    <div className="px-4 py-3 flex items-center gap-2.5" style={{ borderBottom: '1px solid var(--border)' }}>
                       <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ background: col.accent, boxShadow: `0 0 6px ${col.accent}60` }} />
-                      <span className="font-semibold text-sm">{col.title}</span>
-                      <span className="ml-auto text-xs px-2 py-0.5 rounded-full" style={{ background: 'rgba(255,255,255,0.05)', color: '#64748b' }}>
+                      <span className="font-semibold text-sm">{colTitle(col.id)}</span>
+                      <span className="ml-auto text-xs px-2 py-0.5 rounded-full" style={{ background: 'var(--border)', color: 'var(--text-muted)' }}>
                         {colTasks.length}
                       </span>
                     </div>
@@ -142,24 +151,24 @@ const Tasks = () => {
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
                             </svg>
                           </div>
-                          <p className="text-xs" style={{ color: '#334155' }}>Sin tareas</p>
+                          <p className="text-xs" style={{ color: 'var(--text-dim)' }}>{t('tasks.empty')}</p>
                         </div>
                       ) : colTasks.map(task => {
                         const ci = columns.findIndex(c => c.id === task.status);
                         return (
                           <div key={task.id} className="rounded-xl p-3.5 group animate-fade-up"
-                            style={{ background: 'rgba(255,255,255,0.03)', border: `1px solid rgba(255,255,255,0.06)`, borderLeft: `3px solid ${col.accent}` }}>
+                            style={{ background: 'var(--surface-2)', border: `1px solid var(--border)`, borderLeft: `3px solid ${col.accent}` }}>
                             <h4 className="font-semibold text-sm leading-snug mb-1">{task.title}</h4>
                             {task.description && (
-                              <p className="text-xs leading-relaxed line-clamp-2 mb-3" style={{ color: '#64748b' }}>{task.description}</p>
+                              <p className="text-xs leading-relaxed line-clamp-2 mb-3" style={{ color: 'var(--text-muted)' }}>{task.description}</p>
                             )}
                             <div className="flex items-center justify-between">
-                              <span className="text-xs" style={{ color: '#334155' }}>{fmtDate(task.createdAt || task.created_at)}</span>
+                              <span className="text-xs" style={{ color: 'var(--text-dim)' }}>{fmtDate(task.createdAt || task.created_at)}</span>
                               <div className="flex items-center gap-1">
                                 {ci > 0 && (
                                   <button onClick={() => moveTask(task.id, columns[ci-1].id)}
                                     className="p-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-all hover:bg-white/5"
-                                    style={{ color: '#64748b' }} title="Mover izquierda">
+                                    style={{ color: 'var(--text-muted)' }} title={t('tasks.moveLeft')}>
                                     <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
                                     </svg>
@@ -168,7 +177,7 @@ const Tasks = () => {
                                 {ci < columns.length - 1 && (
                                   <button onClick={() => moveTask(task.id, columns[ci+1].id)}
                                     className="p-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-all hover:bg-white/5"
-                                    style={{ color: '#64748b' }} title="Mover derecha">
+                                    style={{ color: 'var(--text-muted)' }} title={t('tasks.moveRight')}>
                                     <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                                     </svg>
@@ -176,7 +185,7 @@ const Tasks = () => {
                                 )}
                                 <button onClick={() => deleteTask(task.id)}
                                   className="p-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-all hover:bg-red-500/10"
-                                  style={{ color: '#64748b' }}>
+                                  style={{ color: 'var(--text-muted)' }}>
                                   <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                                   </svg>
@@ -195,9 +204,9 @@ const Tasks = () => {
             {tasks.length > 0 && (
               <div className="flex justify-center gap-6 mt-6">
                 {columns.map(col => (
-                  <div key={col.id} className="flex items-center gap-2 text-xs" style={{ color: '#475569' }}>
+                  <div key={col.id} className="flex items-center gap-2 text-xs" style={{ color: 'var(--text-muted)' }}>
                     <div className="w-2 h-2 rounded-full" style={{ background: col.accent }} />
-                    <span>{byStatus(col.id).length} {col.title.toLowerCase()}</span>
+                    <span>{byStatus(col.id).length} {colTitle(col.id).toLowerCase()}</span>
                   </div>
                 ))}
               </div>

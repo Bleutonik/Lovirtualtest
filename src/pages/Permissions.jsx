@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import * as api from '../services/api';
+import { useLang } from '../context/LangContext';
 
 const Permissions = () => {
   const navigate = useNavigate();
+  const { t } = useLang();
   const [permissions, setPermissions] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [formData, setFormData] = useState({ type: 'dia_libre', date: '', start_time: '', end_time: '', reason: '' });
@@ -24,44 +26,45 @@ const Permissions = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!formData.date || !formData.reason.trim()) {
-      setError('Completa la fecha y la razón'); setTimeout(() => setError(''), 3000); return;
+      setError(t('permissions.errorMsg')); setTimeout(() => setError(''), 3000); return;
     }
     setIsSubmitting(true); setError('');
     try {
       const typeMap = { dia_libre: 'personal', llegada_tarde: 'personal', salida_temprana: 'personal', vacaciones: 'vacation', otro: 'other' };
       await api.post('/permissions', { type: typeMap[formData.type] || 'personal', date_from: formData.date, date_to: formData.date, reason: formData.reason });
       setFormData({ type: 'dia_libre', date: '', start_time: '', end_time: '', reason: '' });
-      setSuccess('Permiso solicitado exitosamente'); setTimeout(() => setSuccess(''), 3000);
+      setSuccess(t('permissions.successMsg')); setTimeout(() => setSuccess(''), 3000);
       await loadPermissions();
-    } catch { setError('Error al solicitar el permiso'); setTimeout(() => setError(''), 3000); }
+    } catch { setError(t('permissions.errorMsg')); setTimeout(() => setError(''), 3000); }
     finally { setIsSubmitting(false); }
   };
 
   const fmtDate = (ds) => new Date(ds).toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' });
 
   const STATUS = {
-    pending:  { cls: 'badge-yellow', label: 'Pendiente', icon: '⏳' },
-    approved: { cls: 'badge-green',  label: 'Aprobado',  icon: '✓' },
-    rejected: { cls: 'badge-red',    label: 'Rechazado', icon: '✕' },
+    pending:  { cls: 'badge-yellow', label: t('permissions.statuses.pending'),  icon: '⏳' },
+    approved: { cls: 'badge-green',  label: t('permissions.statuses.approved'), icon: '✓' },
+    rejected: { cls: 'badge-red',    label: t('permissions.statuses.rejected'), icon: '✕' },
   };
 
   const TYPE_LABELS = {
-    dia_libre: 'Día Libre', llegada_tarde: 'Llegada Tarde', salida_temprana: 'Salida Temprana',
-    vacaciones: 'Vacaciones', otro: 'Otro', vacation: 'Vacaciones', sick_leave: 'Licencia Médica',
-    personal: 'Permiso Personal', maternity: 'Maternidad', paternity: 'Paternidad',
-    bereavement: 'Duelo', other: 'Otro'
+    dia_libre: t('permissions.types.day_off'), llegada_tarde: t('permissions.types.late'),
+    salida_temprana: t('permissions.types.early'), vacaciones: t('permissions.types.vacation'),
+    otro: t('permissions.types.other'), vacation: t('permissions.types.vacation'),
+    sick_leave: 'Licencia Médica', personal: 'Permiso Personal',
+    maternity: 'Maternidad', paternity: 'Paternidad', bereavement: 'Duelo', other: t('permissions.types.other')
   };
 
   const TYPE_OPTS = [
-    { value: 'dia_libre',       label: 'Día Libre',       icon: '🏖️' },
-    { value: 'llegada_tarde',   label: 'Llegada Tarde',   icon: '⏰' },
-    { value: 'salida_temprana', label: 'Salida Temprana', icon: '🚪' },
-    { value: 'vacaciones',      label: 'Vacaciones',      icon: '✈️' },
-    { value: 'otro',            label: 'Otro',            icon: '📋' },
+    { value: 'dia_libre',       label: t('permissions.types.day_off'),  icon: '🏖️' },
+    { value: 'llegada_tarde',   label: t('permissions.types.late'),     icon: '⏰' },
+    { value: 'salida_temprana', label: t('permissions.types.early'),    icon: '🚪' },
+    { value: 'vacaciones',      label: t('permissions.types.vacation'), icon: '✈️' },
+    { value: 'otro',            label: t('permissions.types.other'),    icon: '📋' },
   ];
 
   return (
-    <div className="min-h-screen" style={{ background: '#070b12', color: '#f1f5f9' }}>
+    <div className="min-h-screen" style={{ background: 'var(--bg)', color: 'var(--text)' }}>
 
       <header className="page-header">
         <div className="px-5 py-3.5 flex items-center gap-3 max-w-3xl mx-auto">
@@ -71,8 +74,8 @@ const Permissions = () => {
             </svg>
           </button>
           <div>
-            <h1 className="font-bold">Solicitar Permiso</h1>
-            <p className="text-xs" style={{ color: '#475569' }}>Gestiona tus ausencias y permisos</p>
+            <h1 className="font-bold">{t('permissions.title')}</h1>
+            <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{t('permissions.subtitle')}</p>
           </div>
         </div>
       </header>
@@ -88,9 +91,9 @@ const Permissions = () => {
             <button key={opt.value} type="button" onClick={() => setFormData({...formData, type: opt.value})}
               className="rounded-xl py-3 px-2 text-center text-xs font-medium transition-all"
               style={{
-                background: formData.type === opt.value ? 'rgba(6,182,212,0.12)' : 'rgba(255,255,255,0.03)',
-                border: formData.type === opt.value ? '1px solid rgba(6,182,212,0.3)' : '1px solid rgba(255,255,255,0.06)',
-                color: formData.type === opt.value ? '#67e8f9' : '#64748b'
+                background: formData.type === opt.value ? 'rgba(6,182,212,0.12)' : 'var(--surface-2)',
+                border: formData.type === opt.value ? '1px solid rgba(6,182,212,0.3)' : '1px solid var(--border)',
+                color: formData.type === opt.value ? 'var(--cyan)' : 'var(--text-muted)'
               }}>
               <div className="text-lg mb-1">{opt.icon}</div>
               {opt.label}
@@ -107,51 +110,51 @@ const Permissions = () => {
               </svg>
             </div>
             <div>
-              <h2 className="font-semibold text-sm">Nueva Solicitud</h2>
-              <p className="text-xs" style={{ color: '#475569' }}>{TYPE_LABELS[formData.type]}</p>
+              <h2 className="font-semibold text-sm">{t('permissions.new')}</h2>
+              <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{TYPE_LABELS[formData.type]}</p>
             </div>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="block text-xs font-medium mb-1.5" style={{ color: '#94a3b8' }}>Fecha</label>
+              <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--text-muted)' }}>{t('permissions.date')}</label>
               <input type="date" value={formData.date} onChange={e => setFormData({...formData, date: e.target.value})}
                 className="field" required />
             </div>
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-medium mb-1.5" style={{ color: '#94a3b8' }}>Hora inicio <span style={{ color: '#334155' }}>(opcional)</span></label>
+                <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--text-muted)' }}>{t('permissions.timeFrom')} <span style={{ color: 'var(--text-dim)' }}>{t('common.optional')}</span></label>
                 <input type="time" value={formData.start_time} onChange={e => setFormData({...formData, start_time: e.target.value})} className="field" />
               </div>
               <div>
-                <label className="block text-xs font-medium mb-1.5" style={{ color: '#94a3b8' }}>Hora fin <span style={{ color: '#334155' }}>(opcional)</span></label>
+                <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--text-muted)' }}>{t('permissions.timeTo')} <span style={{ color: 'var(--text-dim)' }}>{t('common.optional')}</span></label>
                 <input type="time" value={formData.end_time} onChange={e => setFormData({...formData, end_time: e.target.value})} className="field" />
               </div>
             </div>
 
             <div>
-              <label className="block text-xs font-medium mb-1.5" style={{ color: '#94a3b8' }}>Razón</label>
+              <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--text-muted)' }}>{t('permissions.reason')}</label>
               <textarea value={formData.reason} onChange={e => setFormData({...formData, reason: e.target.value})}
-                rows={3} className="field resize-none" placeholder="Describe el motivo de tu solicitud..." required />
+                rows={3} className="field resize-none" placeholder={t('permissions.reasonPlaceholder')} required />
             </div>
 
             <button type="submit" disabled={isSubmitting} className="btn btn-primary w-full py-2.5">
               {isSubmitting ? (
-                <><svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>Enviando...</>
-              ) : 'Enviar Solicitud'}
+                <><svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>{t('common.sending')}</>
+              ) : t('permissions.submit')}
             </button>
           </form>
         </div>
 
         {/* Lista */}
         <div>
-          <p className="text-xs font-semibold mb-3 tracking-wider" style={{ color: '#475569' }}>MIS SOLICITUDES</p>
+          <p className="text-xs font-semibold mb-3 tracking-wider" style={{ color: 'var(--text-muted)' }}>{t('permissions.myRequests')}</p>
           {isLoading ? (
             <div className="space-y-3">{[1,2].map(i => <div key={i} className="skeleton h-20 rounded-2xl" />)}</div>
           ) : permissions.length === 0 ? (
             <div className="card p-8 text-center">
-              <p className="text-sm" style={{ color: '#475569' }}>No has enviado solicitudes</p>
+              <p className="text-sm" style={{ color: 'var(--text-muted)' }}>{t('permissions.empty')}</p>
             </div>
           ) : (
             <div className="space-y-3">
@@ -162,18 +165,18 @@ const Permissions = () => {
                     <div className="flex items-start justify-between gap-3">
                       <div>
                         <div className="flex items-center gap-2 mb-1">
-                          <p className="font-semibold text-sm" style={{ color: '#67e8f9' }}>{TYPE_LABELS[p.type] || p.type}</p>
-                          <span className="text-xs" style={{ color: '#475569' }}>
+                          <p className="font-semibold text-sm" style={{ color: 'var(--cyan)' }}>{TYPE_LABELS[p.type] || p.type}</p>
+                          <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
                             · {fmtDate(p.date_from || p.date)}
                             {p.date_to && p.date_to !== p.date_from && ` → ${fmtDate(p.date_to)}`}
                           </span>
                         </div>
                         {(p.start_time || p.end_time) && (
-                          <p className="text-xs mb-1" style={{ color: '#475569' }}>
-                            {p.start_time && `Desde ${p.start_time}`}{p.start_time && p.end_time && ' · '}{p.end_time && `Hasta ${p.end_time}`}
+                          <p className="text-xs mb-1" style={{ color: 'var(--text-muted)' }}>
+                            {p.start_time && `${t('permissions.from')} ${p.start_time}`}{p.start_time && p.end_time && ' · '}{p.end_time && `${t('permissions.to')} ${p.end_time}`}
                           </p>
                         )}
-                        <p className="text-sm" style={{ color: '#94a3b8' }}>{p.reason}</p>
+                        <p className="text-sm" style={{ color: 'var(--text-muted)' }}>{p.reason}</p>
                       </div>
                       <span className={`badge ${st.cls} flex-shrink-0`}>{st.icon} {st.label}</span>
                     </div>

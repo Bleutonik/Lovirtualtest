@@ -1,5 +1,8 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { ThemeProvider } from './context/ThemeContext';
+import { LangProvider, useLang } from './context/LangContext';
+import ThemeLangToggle from './components/ThemeLangToggle';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import Tasks from './pages/Tasks';
@@ -12,13 +15,14 @@ import EmployeeProfile from './pages/EmployeeProfile';
 // Componente para rutas protegidas
 const ProtectedRoute = ({ children }) => {
   const { isAuthenticated, loading } = useAuth();
+  const { t } = useLang();
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center" style={{ background: 'var(--bg)' }}>
         <div className="text-center">
           <div className="w-12 h-12 border-4 border-cyan-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-gray-400">Cargando...</p>
+          <p style={{ color: 'var(--text-muted)' }}>{t('common.loading')}</p>
         </div>
       </div>
     );
@@ -34,13 +38,14 @@ const ProtectedRoute = ({ children }) => {
 // Componente para ruta publica (login)
 const PublicRoute = ({ children }) => {
   const { isAuthenticated, loading } = useAuth();
+  const { t } = useLang();
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center" style={{ background: 'var(--bg)' }}>
         <div className="text-center">
           <div className="w-12 h-12 border-4 border-cyan-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-gray-400">Cargando...</p>
+          <p style={{ color: 'var(--text-muted)' }}>{t('common.loading')}</p>
         </div>
       </div>
     );
@@ -133,11 +138,16 @@ function AppRoutes() {
 
 function App() {
   return (
-    <Router>
-      <AuthProvider>
-        <AppRoutes />
-      </AuthProvider>
-    </Router>
+    <ThemeProvider>
+      <LangProvider>
+        <Router>
+          <AuthProvider>
+            <AppRoutes />
+          </AuthProvider>
+        </Router>
+        <ThemeLangToggle />
+      </LangProvider>
+    </ThemeProvider>
   );
 }
 

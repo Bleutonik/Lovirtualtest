@@ -22,6 +22,39 @@
   color-scheme: dark;
 }
 
+/* ── Light theme overrides ───────────────────────────── */
+[data-theme="light"] {
+  --bg:         #f0f4f8;
+  --surface:    #ffffff;
+  --surface-2:  #f1f5f9;
+  --border:     rgba(0,0,0,0.08);
+  --border-md:  rgba(0,0,0,0.12);
+  --text:       #0f172a;
+  --text-muted: #475569;
+  --text-dim:   #94a3b8;
+  color-scheme: light;
+}
+[data-theme="light"] .page-header {
+  background: rgba(240,244,248,.95);
+}
+[data-theme="light"] .gradient-text {
+  background: linear-gradient(135deg, #0284c7, #6366f1);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+[data-theme="light"] input:-webkit-autofill,
+[data-theme="light"] input:-webkit-autofill:hover,
+[data-theme="light"] input:-webkit-autofill:focus {
+  -webkit-box-shadow: 0 0 0 1000px #ffffff inset !important;
+  -webkit-text-fill-color: #0f172a !important;
+}
+[data-theme="light"] .card {
+  box-shadow: 0 1px 4px rgba(0,0,0,.08);
+}
+[data-theme="light"] .modal {
+  background: #ffffff;
+}
+
 /* ── Base ────────────────────────────────────────────── */
 html { scroll-behavior: smooth; }
 

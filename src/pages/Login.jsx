@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useLang } from '../context/LangContext';
 
 const Login = () => {
   const [username, setUsername] = useState('');
@@ -9,6 +10,7 @@ const Login = () => {
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const { login, isAuthenticated } = useAuth();
+  const { t } = useLang();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -23,13 +25,13 @@ const Login = () => {
     if (result.success) {
       navigate('/');
     } else {
-      setError(result.error || 'Usuario o contraseña incorrectos');
+      setError(result.error || t('login.error'));
     }
     setIsLoading(false);
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4 relative overflow-hidden" style={{ background: '#070b12' }}>
+    <div className="min-h-screen flex items-center justify-center px-4 relative overflow-hidden" style={{ background: 'var(--bg)' }}>
 
       {/* Background glow blobs */}
       <div className="absolute top-[-20%] left-[-10%] w-[500px] h-[500px] rounded-full opacity-[0.07]"
@@ -46,21 +48,21 @@ const Login = () => {
       {/* Card */}
       <div className="relative w-full max-w-sm animate-fade-up">
         <div className="rounded-2xl p-8 border" style={{
-          background: 'rgba(13,21,38,0.9)',
-          borderColor: 'rgba(255,255,255,0.08)',
-          boxShadow: '0 32px 80px rgba(0,0,0,0.5), 0 0 0 1px rgba(6,182,212,0.05)'
+          background: 'var(--surface)',
+          borderColor: 'var(--border-md)',
+          boxShadow: '0 32px 80px rgba(0,0,0,0.3), 0 0 0 1px rgba(6,182,212,0.05)'
         }}>
 
           {/* Logo + título */}
           <div className="text-center mb-8">
             <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl mb-4"
               style={{ background: 'linear-gradient(135deg, rgba(6,182,212,0.2), rgba(129,140,248,0.15))', border: '1px solid rgba(6,182,212,0.2)' }}>
-              <svg className="w-7 h-7" style={{ color: '#06b6d4' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-7 h-7" style={{ color: 'var(--cyan)' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
               </svg>
             </div>
-            <h1 className="text-xl font-bold text-white">LoVirtual</h1>
-            <p className="text-sm mt-1" style={{ color: '#64748b' }}>Ingresa tus credenciales para continuar</p>
+            <h1 className="text-xl font-bold" style={{ color: 'var(--text)' }}>LoVirtual</h1>
+            <p className="text-sm mt-1" style={{ color: 'var(--text-muted)' }}>{t('login.subtitle')}</p>
           </div>
 
           {/* Error */}
@@ -76,20 +78,20 @@ const Login = () => {
           {/* Form */}
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="block text-xs font-medium mb-1.5" style={{ color: '#94a3b8' }}>Usuario</label>
+              <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--text-muted)' }}>{t('login.username')}</label>
               <input
                 type="text"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 className="field"
-                placeholder="tu_usuario"
+                placeholder={t('login.userPlaceholder')}
                 required
                 autoFocus
               />
             </div>
 
             <div>
-              <label className="block text-xs font-medium mb-1.5" style={{ color: '#94a3b8' }}>Contraseña</label>
+              <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--text-muted)' }}>{t('login.password')}</label>
               <div className="relative">
                 <input
                   type={showPwd ? 'text' : 'password'}
@@ -103,7 +105,7 @@ const Login = () => {
                   type="button"
                   onClick={() => setShowPwd(!showPwd)}
                   className="absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded transition-colors"
-                  style={{ color: '#475569' }}
+                  style={{ color: 'var(--text-muted)' }}
                 >
                   {showPwd ? (
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -130,9 +132,9 @@ const Login = () => {
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                   </svg>
-                  Ingresando...
+                  {t('login.submitting')}
                 </>
-              ) : 'Iniciar Sesión'}
+              ) : t('login.submit')}
             </button>
           </form>
         </div>
