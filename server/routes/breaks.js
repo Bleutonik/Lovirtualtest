@@ -272,7 +272,7 @@ router.get('/history', authenticateToken, (req, res) => {
   }
 });
 
-// GET /api/breaks/all - Obtener todos los breaks (admin)
+// GET /api/breaks/all - Obtener todos los breaks (admin/supervisor)
 router.get('/all', authenticateToken, (req, res) => {
   try {
     const isAdmin = req.user.role === 'admin' || req.user.role === 'supervisor';
@@ -284,10 +284,22 @@ router.get('/all', authenticateToken, (req, res) => {
       });
     }
 
+    // Scope por grupo si es supervisor
+    const requesterId = req.user.id || req.user.userId;
+    let groupUserIds = null;
+    if (req.user.role === 'supervisor') {
+      const sup = db.getById('users', requesterId);
+      if (sup?.group) {
+        groupUserIds = db.getAll('users').filter(u => u.group === sup.group).map(u => u.id);
+      }
+    }
+
     const { date } = req.query;
     const targetDate = date || getTodayDate();
 
-    let breaks = db.find('breaks', b => b.date === targetDate);
+    let breaks = db.find('breaks', b =>
+      b.date === targetDate && (!groupUserIds || groupUserIds.includes(b.user_id))
+    );
 
     // Agregar info de usuarios
     const users = db.getAll('users');

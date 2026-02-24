@@ -63,7 +63,18 @@ router.get('/all', authenticateToken, requireRole('admin', 'supervisor'), (req, 
   try {
     const { status, limit = 100, offset = 0 } = req.query;
 
+    // Scope por grupo si es supervisor
+    const requesterId = req.user.id || req.user.userId;
+    let groupUserIds = null;
+    if (req.user.role === 'supervisor') {
+      const sup = db.getById('users', requesterId);
+      if (sup?.group) {
+        groupUserIds = db.getAll('users').filter(u => u.group === sup.group).map(u => u.id);
+      }
+    }
+
     let permissions = db.getAll('permissions');
+    if (groupUserIds) permissions = permissions.filter(p => groupUserIds.includes(p.user_id));
 
     // Filtrar por status
     if (status) {
@@ -110,7 +121,19 @@ router.get('/all', authenticateToken, requireRole('admin', 'supervisor'), (req, 
 // GET /api/permissions/pending - Permisos pendientes de aprobar
 router.get('/pending', authenticateToken, requireRole('admin', 'supervisor'), (req, res) => {
   try {
-    let permissions = db.find('permissions', p => p.status === 'pending');
+    // Scope por grupo si es supervisor
+    const requesterId = req.user.id || req.user.userId;
+    let groupUserIds = null;
+    if (req.user.role === 'supervisor') {
+      const sup = db.getById('users', requesterId);
+      if (sup?.group) {
+        groupUserIds = db.getAll('users').filter(u => u.group === sup.group).map(u => u.id);
+      }
+    }
+
+    let permissions = db.find('permissions', p =>
+      p.status === 'pending' && (!groupUserIds || groupUserIds.includes(p.user_id))
+    );
 
     // Ordenar por fecha de solicitud ascendente (los mas viejos primero)
     permissions.sort((a, b) => new Date(a.date_requested || a.created_at) - new Date(b.date_requested || b.created_at));
@@ -245,17 +268,22 @@ router.put('/:id/approve', authenticateToken, requireRole('admin', 'supervisor')
     const permission = db.getById('permissions', req.params.id);
 
     if (!permission) {
-      return res.status(404).json({
-        success: false,
-        message: 'Permiso no encontrado'
-      });
+      return res.status(404).json({ success: false, message: 'Permiso no encontrado' });
     }
 
     if (permission.status !== 'pending') {
-      return res.status(400).json({
-        success: false,
-        message: 'Este permiso ya fue procesado'
-      });
+      return res.status(400).json({ success: false, message: 'Este permiso ya fue procesado' });
+    }
+
+    // Supervisor: verificar que el permiso es de su grupo
+    if (req.user.role === 'supervisor') {
+      const sup = db.getById('users', userId);
+      if (sup?.group) {
+        const requester = db.getById('users', permission.user_id);
+        if (requester?.group !== sup.group) {
+          return res.status(403).json({ success: false, message: 'Este permiso no pertenece a tu grupo' });
+        }
+      }
     }
 
     const updated = db.update('permissions', req.params.id, {
@@ -287,17 +315,22 @@ router.put('/:id/reject', authenticateToken, requireRole('admin', 'supervisor'),
     const permission = db.getById('permissions', req.params.id);
 
     if (!permission) {
-      return res.status(404).json({
-        success: false,
-        message: 'Permiso no encontrado'
-      });
+      return res.status(404).json({ success: false, message: 'Permiso no encontrado' });
     }
 
     if (permission.status !== 'pending') {
-      return res.status(400).json({
-        success: false,
-        message: 'Este permiso ya fue procesado'
-      });
+      return res.status(400).json({ success: false, message: 'Este permiso ya fue procesado' });
+    }
+
+    // Supervisor: verificar que el permiso es de su grupo
+    if (req.user.role === 'supervisor') {
+      const sup = db.getById('users', userId);
+      if (sup?.group) {
+        const requester = db.getById('users', permission.user_id);
+        if (requester?.group !== sup.group) {
+          return res.status(403).json({ success: false, message: 'Este permiso no pertenece a tu grupo' });
+        }
+      }
     }
 
     const updated = db.update('permissions', req.params.id, {

@@ -11,12 +11,22 @@ router.get('/', (req, res) => {
   try {
     const userId = req.user.id || req.user.userId;
     const { status, category } = req.query;
-    const isAdmin = req.user.role === 'admin' || req.user.role === 'supervisor';
+    const isAdmin = req.user.role === 'admin';
+    const isSupervisor = req.user.role === 'supervisor';
 
     let incidents = db.getAll('incidents');
 
-    // Si no es admin, solo ver sus propios incidentes
-    if (!isAdmin) {
+    if (isAdmin || isSupervisor) {
+      // Supervisor: solo su grupo
+      if (isSupervisor) {
+        const sup = db.getById('users', userId);
+        if (sup?.group) {
+          const groupIds = db.getAll('users').filter(u => u.group === sup.group).map(u => u.id);
+          incidents = incidents.filter(i => groupIds.includes(i.user_id));
+        }
+      }
+    } else {
+      // Empleado: solo sus propios
       incidents = incidents.filter(i => i.user_id === userId);
     }
 
@@ -131,6 +141,17 @@ router.put('/:id/status', (req, res) => {
         success: false,
         message: 'No tienes permisos para modificar este incidente'
       });
+    }
+
+    // Supervisor: verificar que el incidente es de su grupo
+    if (isAdmin && req.user.role === 'supervisor') {
+      const sup = db.getById('users', userId);
+      if (sup?.group) {
+        const reporter = db.getById('users', existingIncident.user_id);
+        if (reporter?.group !== sup.group) {
+          return res.status(403).json({ success: false, message: 'Este incidente no pertenece a tu grupo' });
+        }
+      }
     }
 
     const validStatuses = ['open', 'in_review', 'resolved', 'closed'];

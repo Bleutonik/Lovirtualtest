@@ -78,7 +78,7 @@ function Dashboard() {
     { name: 'Incidentes', path: '/incidents' },
     { name: 'Permisos', path: '/permissions' },
     { name: 'Chat', path: '/chat' },
-    ...(user?.role === 'admin' ? [{ name: 'Admin', path: '/admin', admin: true }] : [])
+    ...((user?.role === 'admin' || user?.role === 'supervisor') ? [{ name: 'Panel', path: '/admin', admin: true }] : [])
   ];
 
   const breakItems = [
@@ -123,6 +123,7 @@ function Dashboard() {
               <div className={isClockedIn ? 'dot-green' : 'dot-red'} />
               <span className="text-xs" style={{ color: '#64748b' }}>{user?.username}</span>
               {user?.role === 'admin' && <span className="badge badge-yellow">Admin</span>}
+              {user?.role === 'supervisor' && <span className="badge badge-cyan">Grupo {user?.group}</span>}
             </button>
             <button onClick={logout} className="btn btn-danger text-xs px-3 py-1.5">Salir</button>
           </div>

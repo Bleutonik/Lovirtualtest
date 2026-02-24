@@ -1,6 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 import * as api from '../services/api';
+
+const GROUPS = ['A', 'B', 'C', 'D', 'E', 'F'];
 
 /* ─── Helpers ──────────────────────────────────────────── */
 const fmtDate = (ds) => ds ? new Date(ds).toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' }) : 'N/A';
@@ -24,16 +27,19 @@ const Td  = ({ children, muted }) => <td className="py-3 px-4 text-sm" style={{ 
 /* ─── Main ──────────────────────────────────────────────── */
 const Admin = () => {
   const navigate = useNavigate();
+  const { user: me } = useAuth();
+  const isMainAdmin = me?.role === 'admin';
+
   const [activeTab, setActiveTab]   = useState('activity');
   const [isLoading, setIsLoading]   = useState(true);
   const [error, setError]           = useState('');
   const [success, setSuccess]       = useState('');
 
   const [users,          setUsers]          = useState([]);
-  const [userForm,       setUserForm]       = useState({ username:'', email:'', password:'', first_name:'', last_name:'', client:'' });
+  const [userForm,       setUserForm]       = useState({ username:'', email:'', password:'', first_name:'', last_name:'', client:'', group:'', role:'employee' });
   const [isCreating,     setIsCreating]     = useState(false);
   const [editingUser,    setEditingUser]    = useState(null);
-  const [editForm,       setEditForm]       = useState({ email:'', role:'', first_name:'', last_name:'', client:'' });
+  const [editForm,       setEditForm]       = useState({ email:'', role:'', first_name:'', last_name:'', client:'', group:'' });
 
   const [permissions,    setPermissions]    = useState([]);
   const [incidents,      setIncidents]      = useState([]);
@@ -44,7 +50,7 @@ const Admin = () => {
 
   useEffect(() => {
     const u = JSON.parse(localStorage.getItem('user') || '{}');
-    if (u.role !== 'admin') { navigate('/'); return; }
+    if (u.role !== 'admin' && u.role !== 'supervisor') { navigate('/'); return; }
     loadAll();
     const iv = setInterval(loadActivity, 30000);
     return () => clearInterval(iv);
@@ -71,13 +77,13 @@ const Admin = () => {
   const handleCreateUser = async (e) => {
     e.preventDefault();
     setIsCreating(true);
-    try { await api.post('/users', { username:userForm.username, email:userForm.email||null, password:userForm.password, role:'employee', first_name:userForm.first_name||null, last_name:userForm.last_name||null, client:userForm.client||null }); setUserForm({username:'',email:'',password:'',first_name:'',last_name:'',client:''}); flash('Usuario creado'); await loadUsers(); }
+    try { await api.post('/users', { username:userForm.username, email:userForm.email||null, password:userForm.password, role:isMainAdmin?userForm.role:'employee', first_name:userForm.first_name||null, last_name:userForm.last_name||null, client:userForm.client||null, group:userForm.group||null }); setUserForm({username:'',email:'',password:'',first_name:'',last_name:'',client:'',group:me?.group||'',role:'employee'}); flash('Usuario creado'); await loadUsers(); }
     catch (err) { flash(err.message||'Error al crear usuario','error'); }
     finally { setIsCreating(false); }
   };
 
   const handleSaveEdit = async () => {
-    try { await api.put(`/users/${editingUser.id}`, editForm); setEditingUser(null); flash('Usuario actualizado'); await loadUsers(); }
+    try { await api.put(`/users/${editingUser.id}`, { ...editForm, group: isMainAdmin ? editForm.group : undefined }); setEditingUser(null); flash('Usuario actualizado'); await loadUsers(); }
     catch (err) { flash(err.message||'Error','error'); }
   };
 
@@ -129,11 +135,14 @@ const Admin = () => {
             </svg>
           </button>
           <div>
-            <h1 className="font-bold">Panel de Administración</h1>
-            <p className="text-xs" style={{ color:'#475569' }}>Control total del sistema</p>
+            <h1 className="font-bold">{isMainAdmin ? 'Panel de Administración' : `Panel — Grupo ${me?.group || ''}`}</h1>
+            <p className="text-xs" style={{ color:'#475569' }}>{isMainAdmin ? 'Control total del sistema' : 'Vista de tu grupo'}</p>
           </div>
           <div className="ml-auto flex items-center gap-2">
-            <span className="badge badge-yellow">Admin</span>
+            {isMainAdmin
+              ? <span className="badge badge-yellow">Admin</span>
+              : <span className="badge badge-cyan">Líder Grupo {me?.group}</span>
+            }
           </div>
         </div>
       </header>
@@ -355,6 +364,27 @@ const Admin = () => {
                     <label className="block text-xs font-medium mb-1.5" style={{ color:'#94a3b8' }}>Contraseña</label>
                     <input type="password" value={userForm.password} onChange={e=>setUserForm({...userForm,password:e.target.value})} className="field" placeholder="••••••••" required />
                   </div>
+                  {/* Grupo: admin elige, supervisor tiene el suyo fijo */}
+                  <div>
+                    <label className="block text-xs font-medium mb-1.5" style={{ color:'#94a3b8' }}>Grupo</label>
+                    {isMainAdmin
+                      ? <select value={userForm.group} onChange={e=>setUserForm({...userForm,group:e.target.value})} className="field">
+                          <option value="">Sin grupo</option>
+                          {GROUPS.map(g=><option key={g} value={g}>Grupo {g}</option>)}
+                        </select>
+                      : <input className="field" value={`Grupo ${me?.group || ''}`} disabled style={{ opacity:0.5 }} />
+                    }
+                  </div>
+                  {/* Rol: solo admin puede crear supervisores */}
+                  {isMainAdmin && (
+                    <div>
+                      <label className="block text-xs font-medium mb-1.5" style={{ color:'#94a3b8' }}>Rol</label>
+                      <select value={userForm.role} onChange={e=>setUserForm({...userForm,role:e.target.value})} className="field">
+                        <option value="employee">Empleado</option>
+                        <option value="supervisor">Líder de Grupo</option>
+                      </select>
+                    </div>
+                  )}
                 </div>
                 <button type="submit" disabled={isCreating} className="btn btn-primary">
                   {isCreating ? <><svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>Creando...</> : 'Crear Empleado'}
@@ -370,7 +400,7 @@ const Admin = () => {
               ) : (
                 <div className="overflow-x-auto">
                   <table className="w-full">
-                    <thead><tr><Th>Usuario</Th><Th>Cliente</Th><Th>Email</Th><Th>Rol</Th><Th>Acciones</Th></tr></thead>
+                    <thead><tr><Th>Usuario</Th><Th>Grupo</Th><Th>Cliente</Th><Th>Email</Th><Th>Rol</Th><Th>Acciones</Th></tr></thead>
                     <tbody>
                       {users.map(u => (
                         <tr key={u.id} className="transition-colors hover:bg-white/[0.02]">
@@ -385,15 +415,16 @@ const Admin = () => {
                               </div>
                             </div>
                           </Td>
+                          <Td><span style={{ padding:'2px 8px', borderRadius:6, background:`rgba(6,182,212,0.1)`, color:'#67e8f9', fontSize:11, fontWeight:700 }}>{u.group ? `Grupo ${u.group}` : '—'}</span></Td>
                           <Td muted>{u.client || '—'}</Td>
                           <Td muted>{u.email || '—'}</Td>
-                          <Td><span className={`badge ${u.role==='admin'?'badge-blue':'badge-cyan'}`}>{u.role==='admin'?'Admin':'Empleado'}</span></Td>
+                          <Td><span className={`badge ${u.role==='admin'?'badge-blue':u.role==='supervisor'?'badge-yellow':'badge-cyan'}`}>{u.role==='admin'?'Admin':u.role==='supervisor'?'Líder':'Empleado'}</span></Td>
                           <Td>
                             <div className="flex items-center gap-1.5">
                               <button onClick={()=>navigate(`/profile/${u.id}`)} className="btn btn-ghost px-2.5 py-1.5 text-xs">
                                 Perfil
                               </button>
-                              <button onClick={()=>{ setEditingUser(u); setEditForm({email:u.email||'',role:u.role,first_name:u.first_name||'',last_name:u.last_name||'',client:u.client||''}); }} className="btn btn-ghost px-2.5 py-1.5 text-xs">
+                              <button onClick={()=>{ setEditingUser(u); setEditForm({email:u.email||'',role:u.role,first_name:u.first_name||'',last_name:u.last_name||'',client:u.client||'',group:u.group||''}); }} className="btn btn-ghost px-2.5 py-1.5 text-xs">
                                 Editar
                               </button>
                               {u.role !== 'admin' && (
@@ -443,14 +474,25 @@ const Admin = () => {
                       <label className="block text-xs font-medium mb-1.5" style={{ color:'#94a3b8' }}>Email</label>
                       <input type="email" value={editForm.email} onChange={e=>setEditForm({...editForm,email:e.target.value})} className="field" placeholder="correo@empresa.com" />
                     </div>
-                    <div>
-                      <label className="block text-xs font-medium mb-1.5" style={{ color:'#94a3b8' }}>Rol</label>
-                      <select value={editForm.role} onChange={e=>setEditForm({...editForm,role:e.target.value})} className="field">
-                        <option value="employee">Empleado</option>
-                        <option value="supervisor">Supervisor</option>
-                        <option value="admin">Admin</option>
-                      </select>
-                    </div>
+                    {isMainAdmin && (
+                      <>
+                        <div>
+                          <label className="block text-xs font-medium mb-1.5" style={{ color:'#94a3b8' }}>Grupo</label>
+                          <select value={editForm.group} onChange={e=>setEditForm({...editForm,group:e.target.value})} className="field">
+                            <option value="">Sin grupo</option>
+                            {GROUPS.map(g=><option key={g} value={g}>Grupo {g}</option>)}
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-xs font-medium mb-1.5" style={{ color:'#94a3b8' }}>Rol</label>
+                          <select value={editForm.role} onChange={e=>setEditForm({...editForm,role:e.target.value})} className="field">
+                            <option value="employee">Empleado</option>
+                            <option value="supervisor">Líder de Grupo</option>
+                            <option value="admin">Admin</option>
+                          </select>
+                        </div>
+                      </>
+                    )}
                   </div>
                   <div className="flex gap-3 mt-5">
                     <button onClick={()=>setEditingUser(null)} className="btn btn-ghost flex-1">Cancelar</button>

@@ -17,8 +17,12 @@ router.get('/conversations', (req, res) => {
     const messages = db.getAll('chat_messages') || [];
 
     if (isAdmin) {
-      // Admin ve lista de empleados con sus ultimos mensajes
-      const employees = users.filter(u => u.role === 'employee');
+      // Admin/supervisor ve lista de empleados — supervisor solo ve su grupo
+      let employees = users.filter(u => u.role === 'employee');
+      if (req.user.role === 'supervisor') {
+        const sup = users.find(u => u.id === userId);
+        if (sup?.group) employees = employees.filter(u => u.group === sup.group);
+      }
 
       const conversations = employees.map(emp => {
         // Mensajes entre este empleado y cualquier admin

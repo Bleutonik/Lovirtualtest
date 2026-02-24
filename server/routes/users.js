@@ -8,7 +8,16 @@ const router = express.Router();
 // GET /api/users - Listar usuarios (admin/supervisor)
 router.get('/', authenticateToken, requireRole('admin', 'supervisor'), (req, res) => {
   try {
+    const requesterId = req.user.id || req.user.userId;
     let users = db.getAll('users');
+
+    // Supervisor: solo ver su grupo
+    if (req.user.role === 'supervisor') {
+      const sup = db.getById('users', requesterId);
+      if (sup?.group) {
+        users = users.filter(u => u.group === sup.group || u.id === requesterId);
+      }
+    }
 
     // Remover passwords de la respuesta
     users = users.map(({ password, ...user }) => user);
@@ -81,6 +90,14 @@ router.get('/:id/profile', authenticateToken, (req, res) => {
 
     const { password, ...userClean } = user;
 
+    // Supervisor: solo puede ver perfil de su grupo
+    if (req.user.role === 'supervisor' && requesterId !== targetId) {
+      const sup = db.getById('users', requesterId);
+      if (sup?.group && user.group !== sup.group) {
+        return res.status(403).json({ success: false, message: 'Este usuario no pertenece a tu grupo' });
+      }
+    }
+
     // Stats del mes actual
     const now = new Date();
     const monthStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
@@ -133,7 +150,7 @@ router.get('/:id/profile', authenticateToken, (req, res) => {
 // POST /api/users - Crear usuario (solo admin)
 router.post('/', authenticateToken, requireRole('admin'), (req, res) => {
   try {
-    const { username, email, password, role, first_name, last_name, department, client } = req.body;
+    const { username, email, password, role, first_name, last_name, department, client, group } = req.body;
 
     if (!username || !password) {
       return res.status(400).json({
@@ -153,8 +170,22 @@ router.post('/', authenticateToken, requireRole('admin'), (req, res) => {
     }
 
     const hashedPassword = bcrypt.hashSync(password, 10);
+    const requesterId = req.user.id || req.user.userId;
+    const isSupervisor = req.user.role === 'supervisor';
+
+    // Supervisor solo puede crear empleados de su propio grupo
     const validRoles = ['admin', 'supervisor', 'employee'];
-    const userRole = validRoles.includes(role) ? role : 'employee';
+    const userRole = isSupervisor ? 'employee' : (validRoles.includes(role) ? role : 'employee');
+
+    // Grupo: si supervisor, forzar al suyo; si admin, usar el proporcionado
+    let assignedGroup = null;
+    if (isSupervisor) {
+      const sup = db.getById('users', requesterId);
+      assignedGroup = sup?.group || null;
+    } else {
+      const validGroups = ['A', 'B', 'C', 'D', 'E', 'F'];
+      assignedGroup = validGroups.includes(group) ? group : null;
+    }
 
     const newUser = db.insert('users', {
       username,
@@ -165,6 +196,7 @@ router.post('/', authenticateToken, requireRole('admin'), (req, res) => {
       last_name: last_name || null,
       department: department || null,
       client: client || null,
+      group: assignedGroup,
       avatar: null
     });
 
@@ -188,18 +220,25 @@ router.post('/', authenticateToken, requireRole('admin'), (req, res) => {
 // PUT /api/users/:id - Actualizar usuario
 router.put('/:id', authenticateToken, (req, res) => {
   try {
-    const { first_name, last_name, email, department, role, avatar, client } = req.body;
+    const { first_name, last_name, email, department, role, avatar, client, group } = req.body;
     const targetId = parseInt(req.params.id);
     const userId = req.user.id || req.user.userId;
 
     const isSelf = userId === targetId;
     const isAdmin = req.user.role === 'admin';
+    const isSupervisor = req.user.role === 'supervisor';
 
+    // Supervisor: solo puede editar usuarios de su grupo
     if (!isSelf && !isAdmin) {
-      return res.status(403).json({
-        success: false,
-        message: 'No tienes permisos para editar este usuario'
-      });
+      if (isSupervisor) {
+        const sup = db.getById('users', userId);
+        const target = db.getById('users', targetId);
+        if (!sup?.group || target?.group !== sup.group) {
+          return res.status(403).json({ success: false, message: 'Este usuario no pertenece a tu grupo' });
+        }
+      } else {
+        return res.status(403).json({ success: false, message: 'No tienes permisos para editar este usuario' });
+      }
     }
 
     const existing = db.getById('users', targetId);
@@ -230,6 +269,8 @@ router.put('/:id', authenticateToken, (req, res) => {
     if (avatar !== undefined) updates.avatar = avatar;
     if (client !== undefined) updates.client = client;
     if (role !== undefined && isAdmin) updates.role = role;
+    const validGroups = ['A', 'B', 'C', 'D', 'E', 'F'];
+    if (group !== undefined && isAdmin) updates.group = validGroups.includes(group) ? group : null;
 
     const updatedUser = db.update('users', targetId, updates);
     const { password, ...userWithoutPassword } = updatedUser;

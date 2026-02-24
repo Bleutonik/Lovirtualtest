@@ -228,7 +228,7 @@ router.get('/stats', authenticateToken, (req, res) => {
   }
 });
 
-// GET /api/attendance/all - Obtener toda la asistencia (admin)
+// GET /api/attendance/all - Obtener toda la asistencia (admin/supervisor)
 router.get('/all', authenticateToken, (req, res) => {
   try {
     const isAdmin = req.user.role === 'admin' || req.user.role === 'supervisor';
@@ -240,10 +240,22 @@ router.get('/all', authenticateToken, (req, res) => {
       });
     }
 
+    // Scope por grupo si es supervisor
+    const requesterId = req.user.id || req.user.userId;
+    let groupUserIds = null;
+    if (req.user.role === 'supervisor') {
+      const sup = db.getById('users', requesterId);
+      if (sup?.group) {
+        groupUserIds = db.getAll('users').filter(u => u.group === sup.group).map(u => u.id);
+      }
+    }
+
     const { date } = req.query;
     const targetDate = date || getTodayDate();
 
-    let attendance = db.find('attendance', a => a.date === targetDate);
+    let attendance = db.find('attendance', a =>
+      a.date === targetDate && (!groupUserIds || groupUserIds.includes(a.user_id))
+    );
 
     // Agregar info de usuarios
     const users = db.getAll('users');

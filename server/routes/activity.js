@@ -126,11 +126,20 @@ router.post('/back', authenticateToken, (req, res) => {
   }
 });
 
-// GET /api/activity/status - Obtener estado de todos los usuarios (admin)
+// GET /api/activity/status - Obtener estado de todos los usuarios (admin/supervisor)
 router.get('/status', authenticateToken, requireRole('admin', 'supervisor'), (req, res) => {
   try {
     const now = Date.now();
-    const users = db.getAll('users').filter(u => u.role !== 'admin');
+    const requesterId = req.user.id || req.user.userId;
+    let users = db.getAll('users').filter(u => u.role !== 'admin');
+
+    // Scope por grupo si es supervisor
+    if (req.user.role === 'supervisor') {
+      const sup = db.getById('users', requesterId);
+      if (sup?.group) {
+        users = users.filter(u => u.group === sup.group);
+      }
+    }
 
     const statuses = users.map(user => {
       const activity = activityStatus.get(user.id);
