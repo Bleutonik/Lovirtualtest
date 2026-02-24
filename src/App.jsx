@@ -6,6 +6,7 @@ import ThemeLangToggle from './components/ThemeLangToggle';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import Tasks from './pages/Tasks';
+import Notes from './pages/Notes';
 import Incidents from './pages/Incidents';
 import Permissions from './pages/Permissions';
 import Chat from './pages/Chat';
@@ -85,6 +86,14 @@ function AppRoutes() {
         element={
           <ProtectedRoute>
             <Tasks />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/notes"
+        element={
+          <ProtectedRoute>
+            <Notes />
           </ProtectedRoute>
         }
       />
