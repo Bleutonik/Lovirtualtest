@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useLang } from '../context/LangContext';
 import * as api from '../services/api';
+import { createAnnouncement, deleteAnnouncement } from '../services/announcements';
 
 const GROUPS = ['A', 'B', 'C', 'D', 'E', 'F'];
 
@@ -39,6 +40,9 @@ const Admin = () => {
   const [breaks,         setBreaks]         = useState([]);
   const [activityStatus, setActivityStatus] = useState([]);
   const [summary,        setSummary]        = useState({ active:0, idle:0, afk:0, offline:0 });
+  const [announcements,  setAnnouncements]  = useState([]);
+  const [annForm,        setAnnForm]        = useState({ title: '', content: '', category: 'general', expires_at: '' });
+  const [isPublishing,   setIsPublishing]   = useState(false);
 
   // Translated lookup tables (inside component so they respond to language changes)
   const PERM_TYPE  = { personal:'Personal', medical:'Médico', vacation: t('permissions.types.vacation'), other: t('permissions.types.other'), dia_libre: t('permissions.types.day_off'), llegada_tarde: t('permissions.types.late'), salida_temprana: t('permissions.types.early') };
@@ -46,7 +50,7 @@ const Admin = () => {
   const INC_PRI    = { low:['badge-gray', t('incidents.priorities.low')], medium:['badge-yellow', t('incidents.priorities.medium')], high:['badge-orange', t('incidents.priorities.high')], critical:['badge-red', t('incidents.priorities.critical')] };
   const INC_STATUS = { open:['badge-yellow', t('incidents.statuses.open')], pending:['badge-yellow', t('incidents.statuses.pending')], in_review:['badge-blue', t('admin.inReview')], resolved:['badge-green', t('admin.resolved')], closed:['badge-gray', t('incidents.statuses.closed')] };
   const PERM_STATUS= { pending:['badge-yellow', t('permissions.statuses.pending')], approved:['badge-green', t('permissions.statuses.approved')], rejected:['badge-red', t('permissions.statuses.rejected')] };
-  const ACT_CFG    = { active:{ dot:'dot-green', badge:'badge-green', bg:'rgba(34,197,94,0.06)',   border:'rgba(34,197,94,0.15)',   label: t('admin.active2') },
+  const ACT_CFG    = { active:{ dot:'dot-green', badge:'badge-green', bg:'rgba(34,197,94,0.06)',   border:'rgba(34,197,94,0.15)',   label: t('admin.activeStatus') },
                        idle:  { dot:'dot-yellow',badge:'badge-yellow',bg:'rgba(234,179,8,0.06)',   border:'rgba(234,179,8,0.15)',   label: t('admin.inactive') },
                        afk:   { dot:'dot-red',   badge:'badge-red',   bg:'rgba(239,68,68,0.06)',   border:'rgba(239,68,68,0.15)',   label: t('admin.afk') },
                        offline:{ dot:'dot-gray', badge:'badge-gray',  bg:'rgba(100,116,139,0.04)', border:'rgba(100,116,139,0.1)',  label: t('admin.disconnected') } };
@@ -61,7 +65,7 @@ const Admin = () => {
 
   const loadAll = async () => {
     setIsLoading(true);
-    await Promise.allSettled([ loadUsers(), loadPermissions(), loadIncidents(), loadAttendance(), loadBreaks(), loadActivity() ]);
+    await Promise.allSettled([ loadUsers(), loadPermissions(), loadIncidents(), loadAttendance(), loadBreaks(), loadActivity(), loadAnnouncements() ]);
     setIsLoading(false);
   };
 
@@ -70,7 +74,8 @@ const Admin = () => {
   const loadBreaks      = async () => { try { const d = await api.get('/breaks/all');       setBreaks(d?.data?.breaks||d?.breaks||[]); } catch {} };
   const loadUsers       = async () => { try { const d = await api.get('/users');            setUsers(d?.data?.users||d?.users||d?.data||[]); } catch {} };
   const loadPermissions = async () => { try { const d = await api.get('/permissions/all'); setPermissions(d?.data?.permissions||d?.permissions||d?.data||[]); } catch {} };
-  const loadIncidents   = async () => { try { const d = await api.get('/incidents');        setIncidents(d?.data||d?.incidents||[]); } catch {} };
+  const loadIncidents      = async () => { try { const d = await api.get('/incidents');        setIncidents(d?.data||d?.incidents||[]); } catch {} };
+  const loadAnnouncements  = async () => { try { const d = await api.get('/announcements');  const anns = d?.data?.announcements||d?.announcements||d?.data||[]; setAnnouncements(Array.isArray(anns)?anns:[]); } catch {} };
 
   const flash = (msg, type='success') => {
     if (type==='success') { setSuccess(msg); setTimeout(()=>setSuccess(''),3000); }
@@ -101,6 +106,24 @@ const Admin = () => {
   const rejectPerm  = async (id) => { try { await api.put(`/permissions/${id}/reject`);  flash('Permiso rechazado'); await loadPermissions(); } catch (err) { flash(err.message,'error'); } };
   const updateInc   = async (id, status) => { try { await api.put(`/incidents/${id}/status`, { status }); flash(`Marcado: ${status}`); await loadIncidents(); } catch (err) { flash(err.message,'error'); } };
 
+  const handlePublish = async (e) => {
+    e.preventDefault();
+    setIsPublishing(true);
+    try {
+      await createAnnouncement({ title: annForm.title, content: annForm.content, category: annForm.category, expires_at: annForm.expires_at || null });
+      setAnnForm({ title: '', content: '', category: 'general', expires_at: '' });
+      flash(t('announcements.successMsg'));
+      await loadAnnouncements();
+    } catch { flash(t('announcements.errorMsg'), 'error'); }
+    finally { setIsPublishing(false); }
+  };
+
+  const handleDeleteAnn = async (id) => {
+    if (!confirm(t('announcements.deleteConfirm'))) return;
+    try { await deleteAnnouncement(id); flash(t('common.delete') + ' OK'); await loadAnnouncements(); }
+    catch (err) { flash(err.message || 'Error', 'error'); }
+  };
+
   const pendingPerms = permissions.filter(p => p.status==='pending');
   const openIncs     = incidents.filter(i => i.status==='open'||i.status==='pending').length;
 
@@ -115,6 +138,8 @@ const Admin = () => {
       icon:'M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z' },
     { id:'incidents',   label: t('admin.tabs.incidents'),   badge:openIncs||null,
       icon:'M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z' },
+    ...(isMainAdmin ? [{ id:'announcements', label: t('admin.tabs.announcements'), badge: announcements.length || null,
+      icon:'M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z' }] : []),
   ];
 
   if (isLoading) return (
@@ -269,7 +294,7 @@ const Admin = () => {
                         <tr key={a.id} className="transition-colors hover:bg-white/[0.02]">
                           <Td><span className="font-medium">{a.username}</span></Td>
                           <Td><span style={{ color:'#67e8f9' }}>{fmtTime(a.clock_in)}</span></Td>
-                          <Td><span style={{ color: a.clock_out ? '#fb923c' : '#86efac' }}>{a.clock_out ? fmtTime(a.clock_out) : t('admin.active2')}</span></Td>
+                          <Td><span style={{ color: a.clock_out ? '#fb923c' : '#86efac' }}>{a.clock_out ? fmtTime(a.clock_out) : t('admin.activeStatus')}</span></Td>
                           <Td muted>{a.total_hours ? `${a.total_hours.toFixed(1)}h` : '-'}</Td>
                           <Td><span className={`badge ${a.clock_out ? 'badge-gray' : 'badge-green'}`}>{a.clock_out ? t('admin.finished') : t('admin.online')}</span></Td>
                         </tr>
@@ -557,12 +582,100 @@ const Admin = () => {
           </div>
         )}
 
+        {/* ══ TAB: ANUNCIOS ══ */}
+        {activeTab === 'announcements' && isMainAdmin && (
+          <div className="py-5 space-y-5 animate-fade-up">
+
+            {/* Formulario nuevo anuncio */}
+            <div className="card p-5">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background:'rgba(6,182,212,0.1)', border:'1px solid rgba(6,182,212,0.2)' }}>
+                  <svg className="w-4 h-4" style={{ color:'#06b6d4' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z" />
+                  </svg>
+                </div>
+                <p className="font-semibold">{t('announcements.new')}</p>
+              </div>
+              <form onSubmit={handlePublish} className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--text-muted)' }}>{t('announcements.titleField')}</label>
+                    <input type="text" value={annForm.title} onChange={e=>setAnnForm({...annForm,title:e.target.value})} className="field" placeholder="Mañana es feriado..." required />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--text-muted)' }}>{t('announcements.category')}</label>
+                    <select value={annForm.category} onChange={e=>setAnnForm({...annForm,category:e.target.value})} className="field">
+                      {['general','important','urgent','event','policy'].map(c => (
+                        <option key={c} value={c}>{t(`announcements.categories.${c}`)}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--text-muted)' }}>{t('announcements.content')}</label>
+                  <textarea value={annForm.content} onChange={e=>setAnnForm({...annForm,content:e.target.value})} rows={3} className="field resize-none" placeholder="Escribe el mensaje para todos los empleados..." required />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--text-muted)' }}>{t('announcements.expiresAt')}</label>
+                  <input type="datetime-local" value={annForm.expires_at} onChange={e=>setAnnForm({...annForm,expires_at:e.target.value})} className="field" />
+                </div>
+                <button type="submit" disabled={isPublishing} className="btn btn-primary">
+                  {isPublishing
+                    ? <><svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>{t('announcements.publishing')}</>
+                    : t('announcements.publish')}
+                </button>
+              </form>
+            </div>
+
+            {/* Lista de anuncios activos */}
+            {announcements.length === 0 ? (
+              <div className="card p-10 text-center">
+                <svg className="w-10 h-10 mx-auto mb-3 opacity-20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z" />
+                </svg>
+                <p className="text-sm" style={{ color: 'var(--text-muted)' }}>{t('announcements.noAnnouncements')}</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {announcements.map(ann => {
+                  const ANN_STYLE = {
+                    urgent:    { bg:'rgba(239,68,68,0.1)',    border:'rgba(239,68,68,0.22)',    color:'#f87171',  icon:'🚨' },
+                    important: { bg:'rgba(245,158,11,0.1)',   border:'rgba(245,158,11,0.22)',   color:'#fbbf24',  icon:'⚠️' },
+                    event:     { bg:'rgba(168,85,247,0.1)',   border:'rgba(168,85,247,0.22)',   color:'#c084fc',  icon:'📅' },
+                    general:   { bg:'rgba(6,182,212,0.08)',   border:'rgba(6,182,212,0.2)',     color:'#67e8f9',  icon:'📢' },
+                    policy:    { bg:'rgba(100,116,139,0.08)', border:'rgba(100,116,139,0.2)',   color:'#94a3b8',  icon:'📋' },
+                  }[ann.category] || { bg:'rgba(6,182,212,0.08)', border:'rgba(6,182,212,0.2)', color:'#67e8f9', icon:'📢' };
+                  return (
+                    <div key={ann.id} className="rounded-2xl p-4 flex gap-4 items-start" style={{ background:ANN_STYLE.bg, border:`1px solid ${ANN_STYLE.border}` }}>
+                      <span className="text-2xl flex-shrink-0 mt-0.5">{ANN_STYLE.icon}</span>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap mb-1">
+                          <p className="font-semibold text-sm" style={{ color:ANN_STYLE.color }}>{ann.title}</p>
+                          <span className="text-xs px-2 py-0.5 rounded-full font-medium" style={{ background:ANN_STYLE.border, color:ANN_STYLE.color }}>{t(`announcements.categories.${ann.category}`) || ann.category}</span>
+                        </div>
+                        <p className="text-sm leading-relaxed" style={{ color: 'var(--text-muted)' }}>{ann.content}</p>
+                        <div className="flex items-center gap-3 mt-2 text-xs" style={{ color: 'var(--text-dim)' }}>
+                          <span>{t('announcements.postedBy')} {ann.created_by_username || 'admin'}</span>
+                          {ann.expires_at && <span>{t('announcements.expires')} {fmtDate(ann.expires_at)}</span>}
+                        </div>
+                      </div>
+                      <button onClick={()=>handleDeleteAnn(ann.id)} className="btn btn-danger px-2.5 py-1.5 text-xs flex-shrink-0">
+                        {t('common.delete')}
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
+
         {/* ══ TAB: INCIDENTES ══ */}
         {activeTab === 'incidents' && (
           <div className="py-5 space-y-5 animate-fade-up">
             <div className="flex items-center gap-3">
               <p className="font-semibold">{t('admin.reportedIncidents')}</p>
-              {openIncs > 0 && <span className="badge badge-red">{openIncs} {t('admin.open')}</span>}
+              {openIncs > 0 && <span className="badge badge-red">{openIncs} {t('admin.openCount')}</span>}
             </div>
 
             {incidents.length === 0 ? (

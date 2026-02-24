@@ -1,13 +1,17 @@
-import { get } from './api';
+import { get, post, put, del } from './api';
 
-/**
- * Obtiene todos los anuncios
- * @returns {Promise<array>} - Lista de anuncios
- */
 export async function getAnnouncements() {
   return get('/announcements');
 }
 
-export default {
-  getAnnouncements,
-};
+export async function createAnnouncement(data) {
+  return post('/announcements', data);
+}
+
+export async function updateAnnouncement(id, data) {
+  return put(`/announcements/${id}`, data);
+}
+
+export async function deleteAnnouncement(id) {
+  return del(`/announcements/${id}`);
+}

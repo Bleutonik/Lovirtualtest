@@ -36,7 +36,7 @@ const translations = {
       title: 'Panel de Administración', subtitle: 'Control total del sistema',
       groupSubtitle: 'Vista de tu grupo',
       leaderBadge: 'Líder Grupo',
-      tabs: { activity: 'Actividad', reports: 'Reportes', users: 'Usuarios', permissions: 'Permisos', incidents: 'Incidentes' },
+      tabs: { activity: 'Actividad', reports: 'Reportes', users: 'Usuarios', permissions: 'Permisos', incidents: 'Incidentes', announcements: 'Anuncios' },
       active: 'Activos', inactive: 'Inactivos', afk: 'AFK', disconnected: 'Desconectados',
       realtime: 'Monitoreo en Tiempo Real', noEmployees: 'No hay empleados conectados',
       lastSeen: 'Última vez:', lastActivity: 'Actividad:',
@@ -107,6 +107,18 @@ const translations = {
       cancelBtn: 'Cancelar solicitud',
       days: 'días'
     },
+    announcements: {
+      tabLabel: 'Anuncios', new: 'Nuevo Anuncio',
+      titleField: 'Título', content: 'Mensaje',
+      category: 'Tipo', expiresAt: 'Expira el (opcional)',
+      categories: { general: 'General', important: 'Importante', urgent: 'Urgente', event: 'Evento', policy: 'Política' },
+      publish: 'Publicar Anuncio', publishing: 'Publicando...',
+      noAnnouncements: 'Sin anuncios activos',
+      deleteConfirm: '¿Eliminar este anuncio?',
+      successMsg: 'Anuncio publicado exitosamente',
+      errorMsg: 'Error al publicar el anuncio',
+      postedBy: 'por', expires: 'Expira:'
+    },
     chat: {
       title: 'Chat', employees: 'empleados', searchPlaceholder: 'Buscar empleado…',
       noResults: 'Sin resultados',
@@ -158,7 +170,7 @@ const translations = {
       title: 'Administration Panel', subtitle: 'Full system control',
       groupSubtitle: 'Your group view',
       leaderBadge: 'Group Leader',
-      tabs: { activity: 'Activity', reports: 'Reports', users: 'Users', permissions: 'Permissions', incidents: 'Incidents' },
+      tabs: { activity: 'Activity', reports: 'Reports', users: 'Users', permissions: 'Permissions', incidents: 'Incidents', announcements: 'Announcements' },
       active: 'Active', inactive: 'Inactive', afk: 'AFK', disconnected: 'Disconnected',
       realtime: 'Real-Time Monitoring', noEmployees: 'No employees connected',
       lastSeen: 'Last seen:', lastActivity: 'Activity:',
@@ -228,6 +240,18 @@ const translations = {
       validationMsg: 'Please fill in the date and reason',
       cancelBtn: 'Cancel request',
       days: 'days'
+    },
+    announcements: {
+      tabLabel: 'Announcements', new: 'New Announcement',
+      titleField: 'Title', content: 'Message',
+      category: 'Type', expiresAt: 'Expires on (optional)',
+      categories: { general: 'General', important: 'Important', urgent: 'Urgent', event: 'Event', policy: 'Policy' },
+      publish: 'Publish Announcement', publishing: 'Publishing...',
+      noAnnouncements: 'No active announcements',
+      deleteConfirm: 'Delete this announcement?',
+      successMsg: 'Announcement published successfully',
+      errorMsg: 'Error publishing announcement',
+      postedBy: 'by', expires: 'Expires:'
     },
     chat: {
       title: 'Chat', employees: 'employees', searchPlaceholder: 'Search employee…',

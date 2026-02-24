@@ -137,6 +137,33 @@ function Dashboard() {
 
       <main className="max-w-6xl mx-auto px-5 py-6 space-y-5">
 
+        {/* ── Banners de anuncios ── */}
+        {announcements.length > 0 && (
+          <div className="space-y-2">
+            {announcements.map((ann, i) => {
+              const S = {
+                urgent:    { bg:'rgba(239,68,68,0.12)',    border:'rgba(239,68,68,0.30)',    color:'#f87171',  icon:'🚨', label:'Urgente' },
+                important: { bg:'rgba(245,158,11,0.12)',   border:'rgba(245,158,11,0.30)',   color:'#fbbf24',  icon:'⚠️', label:'Importante' },
+                event:     { bg:'rgba(168,85,247,0.12)',   border:'rgba(168,85,247,0.30)',   color:'#c084fc',  icon:'📅', label:'Evento' },
+                general:   { bg:'rgba(6,182,212,0.10)',    border:'rgba(6,182,212,0.25)',    color:'#67e8f9',  icon:'📢', label:'General' },
+                policy:    { bg:'rgba(100,116,139,0.10)',  border:'rgba(100,116,139,0.25)',  color:'#94a3b8',  icon:'📋', label:'Política' },
+              }[ann.category] || { bg:'rgba(6,182,212,0.10)', border:'rgba(6,182,212,0.25)', color:'#67e8f9', icon:'📢', label:'Anuncio' };
+              return (
+                <div key={ann.id || i} className="rounded-2xl px-5 py-4 flex items-start gap-4 animate-fade-up" style={{ background:S.bg, border:`1px solid ${S.border}` }}>
+                  <span className="text-2xl flex-shrink-0 mt-0.5">{S.icon}</span>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap mb-0.5">
+                      <p className="font-bold text-sm" style={{ color:S.color }}>{ann.title}</p>
+                      <span className="text-xs px-2 py-0.5 rounded-full font-semibold" style={{ background: S.border, color:S.color }}>{S.label}</span>
+                    </div>
+                    <p className="text-sm leading-relaxed" style={{ color: 'var(--text)' }}>{ann.content}</p>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
         {/* ── Hero: reloj + bienvenida ── */}
         <div className="rounded-2xl overflow-hidden relative" style={{ background: 'linear-gradient(135deg, var(--surface), var(--surface-2))', border: '1px solid var(--border)' }}>
           <div className="absolute inset-0 opacity-[0.04]" style={{ backgroundImage: 'linear-gradient(rgba(6,182,212,1) 1px, transparent 1px), linear-gradient(90deg, rgba(6,182,212,1) 1px, transparent 1px)', backgroundSize: '40px 40px' }} />
@@ -273,29 +300,23 @@ function Dashboard() {
           </div>
         </div>
 
-        {/* ── Anuncios ── */}
-        <div>
-          <p className="text-xs font-semibold mb-3 tracking-wider" style={{ color: 'var(--text-muted)' }}>{t('dashboard.announcements')}</p>
-          <div className="space-y-2">
-            {(announcements.length > 0
-              ? announcements
-              : [{ title: '¡Bienvenidos!', content: 'Bienvenidos a LoVirtual. Gracias por ser parte de esta gran familia.', created_at: new Date(Date.now() - 38 * 86400000).toISOString() }]
-            ).map((ann, i) => (
-              <div key={i} className="card p-4 flex gap-4 items-start animate-fade-up">
-                <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.15)' }}>
-                  <svg className="w-4 h-4" style={{ color: '#f87171' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z" />
-                  </svg>
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="font-semibold text-sm">{ann.title}</p>
-                  <p className="text-xs mt-1 leading-relaxed" style={{ color: 'var(--text-muted)' }}>{ann.content}</p>
-                </div>
-                <span className="text-xs flex-shrink-0" style={{ color: 'var(--text-dim)' }}>{timeAgo(ann.created_at)}</span>
+        {/* ── Anuncios (historial compacto) ── */}
+        {announcements.length === 0 && (
+          <div>
+            <p className="text-xs font-semibold mb-3 tracking-wider" style={{ color: 'var(--text-muted)' }}>{t('dashboard.announcements')}</p>
+            <div className="card p-4 flex gap-4 items-start">
+              <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: 'rgba(6,182,212,0.08)', border: '1px solid rgba(6,182,212,0.15)' }}>
+                <svg className="w-4 h-4" style={{ color: '#67e8f9' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z" />
+                </svg>
               </div>
-            ))}
+              <div className="flex-1 min-w-0">
+                <p className="font-semibold text-sm">¡Bienvenidos!</p>
+                <p className="text-xs mt-1 leading-relaxed" style={{ color: 'var(--text-muted)' }}>Bienvenidos a LoVirtual. Gracias por ser parte de esta gran familia.</p>
+              </div>
+            </div>
           </div>
-        </div>
+        )}
       </main>
     </div>
   );
