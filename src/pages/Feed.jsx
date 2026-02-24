@@ -38,6 +38,13 @@ const useTimeAgo = (t) => (ds) => {
   return t('feed.daysAgo2').replace('{d}', Math.floor(diff/86400));
 };
 
+const fmtDateTime = (ds) => {
+  const d = new Date(ds);
+  return d.toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' })
+    + ' · '
+    + d.toLocaleTimeString('es-PR', { hour: '2-digit', minute: '2-digit', hour12: true });
+};
+
 /* ── Componente de un post ── */
 const Post = ({ post, me, t, timeAgo, onDelete, onReact, onComment, onDelComment }) => {
   const [showComments, setShowComments] = useState(false);
@@ -83,7 +90,7 @@ const Post = ({ post, me, t, timeAgo, onDelete, onReact, onComment, onDelComment
                   {t('feed.client')}: <span style={{ color: 'var(--cyan)' }}>{post.client}</span>
                 </span>
               )}
-              <span className="text-xs" style={{ color: 'var(--text-dim)' }}>· {timeAgo(post.created_at)}</span>
+              <span className="text-xs" style={{ color: 'var(--text-dim)' }}>· {fmtDateTime(post.created_at)}</span>
             </div>
           </div>
         </div>
