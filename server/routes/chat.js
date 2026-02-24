@@ -37,6 +37,7 @@ router.get('/conversations', (req, res) => {
           email: emp.email,
           lastMessage: lastMessage ? {
             content: lastMessage.content,
+            content_type: lastMessage.content_type || 'text',
             timestamp: lastMessage.created_at,
             fromMe: lastMessage.from_user_id === userId
           } : null,

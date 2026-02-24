@@ -116,11 +116,14 @@ function Dashboard() {
             </nav>
           </div>
           <div className="flex items-center gap-3">
-            <div className="flex items-center gap-2">
+            <button onClick={() => navigate(`/profile/${user?.id}`)}
+              style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'transparent', border: 'none', cursor: 'pointer', padding: '4px 8px', borderRadius: 8 }}
+              onMouseEnter={e => e.currentTarget.style.background='rgba(255,255,255,0.04)'}
+              onMouseLeave={e => e.currentTarget.style.background='transparent'}>
               <div className={isClockedIn ? 'dot-green' : 'dot-red'} />
               <span className="text-xs" style={{ color: '#64748b' }}>{user?.username}</span>
               {user?.role === 'admin' && <span className="badge badge-yellow">Admin</span>}
-            </div>
+            </button>
             <button onClick={logout} className="btn btn-danger text-xs px-3 py-1.5">Salir</button>
           </div>
         </div>

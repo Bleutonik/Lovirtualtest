@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback, memo, startTransition } from 
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { getConversations, getMessages, sendMessage, deleteConversation, getActivityStatus } from '../services/chat';
+import { get } from '../services/api';
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 const fmtTime = ds =>
@@ -215,12 +216,12 @@ export default function Chat() {
   // Activity status para dots online
   const [activityMap,  setActivityMap]  = useState({}); // userId -> 'active'|'idle'|'offline'
 
+  // Búsqueda de empleados (admin)
+  const [allEmployees, setAllEmployees] = useState([]);
+  const [search,       setSearch]       = useState('');
+
   // Admin extras
   const [confirmDel,     setConfirmDel]     = useState(null); // userId
-  const [showCompose,    setShowCompose]    = useState(false);
-  const [composeUid,     setComposeUid]     = useState('');
-  const [composeTxt,     setComposeTxt]     = useState('');
-  const [composeSending, setComposeSending] = useState(false);
 
   const endRef    = useRef(null);
   const scrollRef = useRef(null);
@@ -233,6 +234,7 @@ export default function Chat() {
   useEffect(() => {
     fetchConvs();
     fetchActivity();
+    if (isAdmin) fetchEmployees();
     const iv1 = setInterval(fetchConvs, 8000);
     const iv2 = setInterval(fetchActivity, 30000);
     return () => { clearInterval(iv1); clearInterval(iv2); };
@@ -264,6 +266,14 @@ export default function Chat() {
     endRef.current?.scrollIntoView({ behavior: instant ? 'instant' : 'smooth' });
 
   // ── API calls ──────────────────────────────────────────────────────────────
+  const fetchEmployees = async () => {
+    try {
+      const res = await get('/users');
+      const users = res?.data?.users || [];
+      setAllEmployees(users.filter(u => u.role !== 'admin' && u.role !== 'supervisor'));
+    } catch {}
+  };
+
   const fetchActivity = async () => {
     try {
       const res = await getActivityStatus();
@@ -359,22 +369,6 @@ export default function Chat() {
     } catch { }
   };
 
-  // ── Admin: nueva conversación ──────────────────────────────────────────────
-  const handleCompose = async () => {
-    if (!composeUid || !composeTxt.trim()) return;
-    setComposeSending(true);
-    try {
-      await sendMessage(parseInt(composeUid), composeTxt.trim());
-      await fetchConvs();
-      const target = convs.find(c => c.userId === parseInt(composeUid));
-      if (target) selectUser(target);
-      setShowCompose(false);
-      setComposeTxt('');
-      setComposeUid('');
-    } catch { }
-    finally { setComposeSending(false); }
-  };
-
   const selectUser = (conv) => {
     if (conv.userId === selUser?.userId) return;
     setMsgs([]);
@@ -431,17 +425,38 @@ export default function Chat() {
 
         {/* ── Sidebar ── */}
         <div style={S.sidebar}>
-          <div style={{ padding: '10px 14px', borderBottom: '1px solid rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <p style={{ fontSize: 10, fontWeight: 700, color: '#475569', letterSpacing: '.08em' }}>EMPLEADOS</p>
-            <button onClick={() => { setComposeUid(convs[0]?.userId?.toString() || ''); setShowCompose(true); }}
-              title="Nueva conversación"
-              style={{ width: 26, height: 26, borderRadius: 7, border: '1px solid rgba(6,182,212,0.3)', background: 'rgba(6,182,212,0.08)', color: '#67e8f9', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
-              <svg width={12} height={12} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
+          {/* Header con buscador */}
+          <div style={{ padding: '10px 14px', borderBottom: '1px solid rgba(255,255,255,0.05)', flexShrink: 0 }}>
+            <p style={{ fontSize: 10, fontWeight: 700, color: '#475569', letterSpacing: '.08em', marginBottom: 8 }}>CHATS</p>
+            {/* Search input */}
+            <div style={{ position: 'relative' }}>
+              <svg width={13} height={13} fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                style={{ position: 'absolute', left: 9, top: '50%', transform: 'translateY(-50%)', color: '#475569', pointerEvents: 'none' }}>
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
               </svg>
-            </button>
+              <input
+                type="text"
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                placeholder="Buscar empleado…"
+                style={{
+                  width: '100%', paddingLeft: 28, paddingRight: search ? 28 : 10,
+                  paddingTop: 7, paddingBottom: 7,
+                  background: '#111827', border: '1px solid rgba(255,255,255,0.08)',
+                  borderRadius: 10, color: '#f1f5f9', fontSize: 12, fontFamily: 'inherit', outline: 'none',
+                  boxSizing: 'border-box',
+                }}
+              />
+              {search && (
+                <button onClick={() => setSearch('')}
+                  style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: '#475569', cursor: 'pointer', fontSize: 14, lineHeight: 1, padding: 0 }}>
+                  ✕
+                </button>
+              )}
+            </div>
           </div>
 
+          {/* Lista */}
           <div style={{ flex: 1, overflowY: 'auto' }} className="chat-scroll">
             {convLoading
               ? [1,2,3].map(i => (
@@ -449,19 +464,35 @@ export default function Chat() {
                     <div className="skeleton" style={{ width: 36, height: 36, borderRadius: '50%', flexShrink: 0 }} />
                     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 6 }}>
                       <div className="skeleton" style={{ height: 11, borderRadius: 6, width: '70%' }} />
-                      <div className="skeleton" style={{ height: 9,  borderRadius: 6, width: '45%' }} />
+                      <div className="skeleton" style={{ height: 9, borderRadius: 6, width: '45%' }} />
                     </div>
                   </div>
                 ))
-              : convs.length === 0
-                ? <p style={{ padding: '36px 14px', textAlign: 'center', fontSize: 12, color: '#374151' }}>Sin empleados</p>
-                : convs.map(conv => {
-                    const active     = selUser?.userId === conv.userId;
-                    const confirming = confirmDel  === conv.userId;
+              : (() => {
+                  // En búsqueda: mostrar todos los empleados que coincidan
+                  // Sin búsqueda: solo mostrar conversaciones con mensajes
+                  const sl = search.trim().toLowerCase();
+                  const list = sl
+                    ? allEmployees.filter(emp =>
+                        (emp.username || '').toLowerCase().includes(sl) ||
+                        (emp.first_name || '').toLowerCase().includes(sl) ||
+                        (emp.last_name || '').toLowerCase().includes(sl)
+                      ).map(emp => {
+                        const existing = convs.find(c => c.userId === emp.id);
+                        return existing || { userId: emp.id, username: emp.username, email: emp.email, lastMessage: null, unreadCount: 0 };
+                      })
+                    : convs.filter(c => c.lastMessage !== null);
+
+                  if (list.length === 0) return (
+                    <p style={{ padding: '36px 14px', textAlign: 'center', fontSize: 12, color: '#374151' }}>
+                      {sl ? 'Sin resultados' : 'Sin conversaciones. Busca un empleado para iniciar un chat.'}
+                    </p>
+                  );
+
+                  return list.map(conv => {
+                    const active = selUser?.userId === conv.userId;
                     return (
                       <div key={conv.userId} style={{ position: 'relative' }}>
-
-                        {/* Fila: área clickable + botón trash como hermanos, NO anidados */}
                         <div style={{
                           display: 'flex', alignItems: 'center',
                           borderLeft: `2px solid ${active ? '#06b6d4' : 'transparent'}`,
@@ -469,14 +500,13 @@ export default function Chat() {
                           borderBottom: '1px solid rgba(255,255,255,0.03)',
                         }}>
                           {/* Área principal: seleccionar usuario */}
-                          <button onClick={() => selectUser(conv)} style={{
+                          <button onClick={() => { setSearch(''); selectUser(conv); }} style={{
                             flex: 1, display: 'flex', alignItems: 'center', gap: 10,
                             padding: '11px 8px 11px 14px', textAlign: 'left', border: 'none',
                             background: 'transparent', cursor: 'pointer', color: '#f1f5f9', fontFamily: 'inherit', minWidth: 0,
                           }}>
                             <div style={{ position: 'relative', flexShrink: 0 }}>
                               <Av name={conv.username} />
-                              {/* Dot de status online */}
                               {(() => {
                                 const st = activityMap[conv.userId];
                                 const c = st === 'active' ? '#22c55e' : st === 'idle' ? '#f59e0b' : null;
@@ -493,7 +523,7 @@ export default function Chat() {
                               <p style={{ fontSize: 11, marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: conv.unreadCount > 0 ? '#94a3b8' : '#374151', fontWeight: conv.unreadCount > 0 ? 500 : 400 }}>
                                 {conv.lastMessage
                                   ? (conv.lastMessage.content_type === 'image' ? '📷 Imagen' : (conv.lastMessage.fromMe ? 'Tú: ' : '') + conv.lastMessage.content)
-                                  : <span style={{ fontStyle: 'italic' }}>Sin mensajes</span>}
+                                  : <span style={{ fontStyle: 'italic', color: '#374151' }}>Iniciar conversación</span>}
                               </p>
                             </div>
                           </button>
@@ -504,18 +534,21 @@ export default function Chat() {
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                             </svg>
                           </button>
-                          {/* Botón trash — abre modal de confirmación */}
-                          <button onClick={() => { selectUser(conv); setConfirmDel(conv.userId); }}
-                            title="Eliminar conversación"
-                            style={{ width: 32, height: 32, borderRadius: 7, border: '1px solid rgba(239,68,68,0.25)', background: 'rgba(239,68,68,0.08)', color: '#f87171', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, cursor: 'pointer', marginRight: 8 }}>
-                            <svg width={14} height={14} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                            </svg>
-                          </button>
+                          {/* Botón trash — solo si hay conversación activa */}
+                          {conv.lastMessage && (
+                            <button onClick={() => { selectUser(conv); setConfirmDel(conv.userId); }}
+                              title="Eliminar conversación"
+                              style={{ width: 32, height: 32, borderRadius: 7, border: '1px solid rgba(239,68,68,0.25)', background: 'rgba(239,68,68,0.08)', color: '#f87171', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, cursor: 'pointer', marginRight: 8 }}>
+                              <svg width={14} height={14} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                              </svg>
+                            </button>
+                          )}
                         </div>
                       </div>
                     );
-                  })
+                  });
+                })()
             }
           </div>
         </div>
@@ -527,11 +560,7 @@ export default function Chat() {
                 <svg width={40} height={40} fill="none" stroke="currentColor" viewBox="0 0 24 24" style={{ opacity: .15 }}>
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M17 8h2a2 2 0 012 2v6a2 2 0 01-2 2h-2v4l-4-4H9a1.994 1.994 0 01-1.414-.586m0 0L11 14h4a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2v4l.586-.586z" />
                 </svg>
-                <p style={{ fontSize: 13 }}>Selecciona un empleado</p>
-                <button onClick={() => { setComposeUid(convs[0]?.userId?.toString() || ''); setShowCompose(true); }}
-                  className="btn btn-primary text-xs px-4 py-2 mt-2">
-                  + Nueva conversación
-                </button>
+                <p style={{ fontSize: 13 }}>Busca un empleado para iniciar un chat</p>
               </div>
             : <>
                 <div style={S.chatHeader}>
@@ -577,46 +606,6 @@ export default function Chat() {
           <div style={{ display: 'flex', gap: 10 }}>
             <button onClick={() => setConfirmDel(null)} className="btn btn-ghost" style={{ flex: 1 }}>Cancelar</button>
             <button onClick={() => handleDelete(confirmDel)} className="btn btn-danger" style={{ flex: 1 }}>Eliminar</button>
-          </div>
-        </Modal>
-      )}
-
-      {/* Modal: nueva conversación */}
-      {showCompose && (
-        <Modal onClose={() => { setShowCompose(false); setComposeTxt(''); setComposeUid(''); }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
-            <div>
-              <p style={{ fontWeight: 700, fontSize: 15 }}>Nueva Conversación</p>
-              <p style={{ fontSize: 11, color: '#475569', marginTop: 2 }}>Inicia un chat con un empleado</p>
-            </div>
-            <button onClick={() => setShowCompose(false)}
-              style={{ width: 28, height: 28, borderRadius: 8, border: 'none', background: 'rgba(255,255,255,0.05)', color: '#64748b', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <svg width={14} height={14} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12"/></svg>
-            </button>
-          </div>
-          <div style={{ marginBottom: 14 }}>
-            <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: '#94a3b8', marginBottom: 6, letterSpacing: '.04em' }}>EMPLEADO</label>
-            <select value={composeUid} onChange={e => setComposeUid(e.target.value)} className="field" style={{ width: '100%' }}>
-              <option value="">Seleccionar empleado…</option>
-              {convs.map(c => <option key={c.userId} value={c.userId}>{c.username}</option>)}
-            </select>
-          </div>
-          <div style={{ marginBottom: 20 }}>
-            <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: '#94a3b8', marginBottom: 6, letterSpacing: '.04em' }}>MENSAJE</label>
-            <textarea
-              value={composeTxt}
-              onChange={e => setComposeTxt(e.target.value)}
-              onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleCompose(); } }}
-              rows={3} placeholder="Escribe tu mensaje…"
-              className="field resize-none" style={{ width: '100%' }}
-              autoFocus
-            />
-          </div>
-          <div style={{ display: 'flex', gap: 10 }}>
-            <button onClick={() => { setShowCompose(false); setComposeTxt(''); setComposeUid(''); }} className="btn btn-ghost" style={{ flex: 1 }}>Cancelar</button>
-            <button onClick={handleCompose} disabled={!composeUid || !composeTxt.trim() || composeSending} className="btn btn-primary" style={{ flex: 1 }}>
-              {composeSending ? 'Enviando…' : 'Enviar'}
-            </button>
           </div>
         </Modal>
       )}
