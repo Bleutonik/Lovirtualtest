@@ -26,7 +26,8 @@ const Notes = () => {
   const loadNotes = async () => {
     try {
       const data = await getNotes();
-      setNotes(data.notes || data || []);
+      const arr = data?.data || data?.notes || [];
+      setNotes(Array.isArray(arr) ? arr : []);
     } catch {} finally { setIsLoading(false); }
   };
 
