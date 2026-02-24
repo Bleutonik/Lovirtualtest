@@ -78,6 +78,7 @@ function Dashboard() {
 
   const navItems = [
     { name: t('nav.home'),        path: '/' },
+    { name: t('nav.feed'),        path: '/feed' },
     { name: t('nav.tasks'),       path: '/tasks' },
     { name: t('nav.notes'),       path: '/notes' },
     { name: t('nav.incidents'),   path: '/incidents' },

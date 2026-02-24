@@ -11,7 +11,7 @@ const translations = {
     },
     nav: {
       home: 'Inicio', tasks: 'Tareas', notes: 'Notas', incidents: 'Incidentes',
-      permissions: 'Permisos', chat: 'Chat', panel: 'Panel'
+      permissions: 'Permisos', chat: 'Chat', panel: 'Panel', feed: 'Actividad'
     },
     login: {
       subtitle: 'Ingresa tus credenciales para continuar',
@@ -133,6 +133,18 @@ const translations = {
       deleteWarning: 'Se borrarán todos los mensajes con',
       deleteUndo: 'Esta acción no se puede deshacer.',
       startWith: 'Inicia la conversación con', firstMessage: 'Escribe tu primer mensaje'
+    },
+    feed: {
+      title: 'Actividad del Equipo', subtitle: 'Comparte lo que hiciste hoy para tu cliente',
+      newPost: 'Nueva Publicación', placeholder: '¿Qué hiciste hoy para tu cliente? Describe tus tareas completadas...',
+      post: 'Publicar', posting: 'Publicando...',
+      client: 'Cliente', group: 'Grupo', deletePost: '¿Eliminar esta publicación?',
+      noFeed: 'Sin publicaciones aún', noFeedDesc: 'Sé el primero en compartir tu actividad del día.',
+      comment: 'Comentar', commentPlaceholder: 'Escribe un comentario...', send: 'Enviar',
+      comments: 'comentarios', comment1: 'comentario', viewComments: 'Ver comentarios',
+      hideComments: 'Ocultar', deleteComment: '¿Eliminar comentario?',
+      roles: { admin: 'Admin', supervisor: 'Líder', employee: 'Empleado' },
+      justNow: 'Ahora mismo', minutesAgo: 'hace {m} min', hoursAgo: 'hace {h}h', daysAgo2: 'hace {d}d'
     }
   },
   en: {
@@ -145,7 +157,7 @@ const translations = {
     },
     nav: {
       home: 'Home', tasks: 'Tasks', notes: 'Notes', incidents: 'Incidents',
-      permissions: 'Permissions', chat: 'Chat', panel: 'Panel'
+      permissions: 'Permissions', chat: 'Chat', panel: 'Panel', feed: 'Activity'
     },
     login: {
       subtitle: 'Enter your credentials to continue',
@@ -267,6 +279,18 @@ const translations = {
       deleteWarning: 'All messages with',
       deleteUndo: 'This action cannot be undone.',
       startWith: 'Start the conversation with', firstMessage: 'Write your first message'
+    },
+    feed: {
+      title: 'Team Activity', subtitle: 'Share what you did today for your client',
+      newPost: 'New Post', placeholder: 'What did you do today for your client? Describe your completed tasks...',
+      post: 'Post', posting: 'Posting...',
+      client: 'Client', group: 'Group', deletePost: 'Delete this post?',
+      noFeed: 'No posts yet', noFeedDesc: 'Be the first to share your daily activity.',
+      comment: 'Comment', commentPlaceholder: 'Write a comment...', send: 'Send',
+      comments: 'comments', comment1: 'comment', viewComments: 'View comments',
+      hideComments: 'Hide', deleteComment: 'Delete comment?',
+      roles: { admin: 'Admin', supervisor: 'Leader', employee: 'Employee' },
+      justNow: 'Just now', minutesAgo: '{m} min ago', hoursAgo: '{h}h ago', daysAgo2: '{d}d ago'
     }
   }
 };

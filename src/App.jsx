@@ -7,6 +7,7 @@ import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import Tasks from './pages/Tasks';
 import Notes from './pages/Notes';
+import Feed from './pages/Feed';
 import Incidents from './pages/Incidents';
 import Permissions from './pages/Permissions';
 import Chat from './pages/Chat';
@@ -94,6 +95,14 @@ function AppRoutes() {
         element={
           <ProtectedRoute>
             <Notes />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/feed"
+        element={
+          <ProtectedRoute>
+            <Feed />
           </ProtectedRoute>
         }
       />
