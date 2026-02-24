@@ -7,6 +7,7 @@ import Incidents from './pages/Incidents';
 import Permissions from './pages/Permissions';
 import Chat from './pages/Chat';
 import Admin from './pages/Admin';
+import EmployeeProfile from './pages/EmployeeProfile';
 
 // Componente para rutas protegidas
 const ProtectedRoute = ({ children }) => {
@@ -111,6 +112,15 @@ function AppRoutes() {
         element={
           <ProtectedRoute>
             <Admin />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/profile/:userId"
+        element={
+          <ProtectedRoute>
+            <EmployeeProfile />
           </ProtectedRoute>
         }
       />

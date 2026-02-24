@@ -65,10 +65,75 @@ router.get('/:id', authenticateToken, (req, res) => {
   }
 });
 
+// GET /api/users/:id/profile - Perfil completo con stats
+router.get('/:id/profile', authenticateToken, (req, res) => {
+  try {
+    const requesterId = req.user.id || req.user.userId;
+    const targetId = parseInt(req.params.id);
+    const isAdmin = ['admin', 'supervisor'].includes(req.user.role);
+
+    if (requesterId !== targetId && !isAdmin) {
+      return res.status(403).json({ success: false, message: 'Sin permisos' });
+    }
+
+    const user = db.getById('users', targetId);
+    if (!user) return res.status(404).json({ success: false, message: 'Usuario no encontrado' });
+
+    const { password, ...userClean } = user;
+
+    // Stats del mes actual
+    const now = new Date();
+    const monthStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+
+    const attendance = db.getAll('attendance') || [];
+    const myAttendance = attendance.filter(a => a.user_id === targetId && a.date?.startsWith(monthStr));
+    const daysPresent = myAttendance.filter(a => a.status === 'present' || a.status === 'late').length;
+    const daysLate = myAttendance.filter(a => a.status === 'late').length;
+    const totalHours = myAttendance.reduce((sum, a) => sum + (parseFloat(a.total_hours) || 0), 0);
+
+    const tasks = db.getAll('tasks') || [];
+    const myTasks = tasks.filter(t => t.user_id === targetId);
+    const tasksCompleted = myTasks.filter(t => t.status === 'completed').length;
+    const tasksPending = myTasks.filter(t => t.status === 'pending' || t.status === 'in_progress').length;
+
+    // Activity status
+    const activityLogs = db.getAll('activity_logs') || [];
+    const lastLog = activityLogs.filter(l => l.user_id === targetId).sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))[0];
+    let onlineStatus = 'offline';
+    if (lastLog) {
+      const minsSince = (Date.now() - new Date(lastLog.timestamp)) / 60000;
+      if (minsSince < 5) onlineStatus = 'active';
+      else if (minsSince < 20) onlineStatus = 'idle';
+    }
+
+    // Asistencia reciente (últimos 10 registros)
+    const recentAttendance = attendance
+      .filter(a => a.user_id === targetId)
+      .sort((a, b) => new Date(b.date) - new Date(a.date))
+      .slice(0, 10);
+
+    res.json({
+      success: true,
+      data: {
+        user: userClean,
+        stats: {
+          thisMonth: { daysPresent, daysLate, totalHours: Math.round(totalHours * 10) / 10 },
+          tasks: { completed: tasksCompleted, pending: tasksPending },
+          onlineStatus
+        },
+        recentAttendance
+      }
+    });
+  } catch (error) {
+    console.error('Error obteniendo perfil:', error);
+    res.status(500).json({ success: false, message: 'Error interno del servidor' });
+  }
+});
+
 // POST /api/users - Crear usuario (solo admin)
 router.post('/', authenticateToken, requireRole('admin'), (req, res) => {
   try {
-    const { username, email, password, role, first_name, last_name, department } = req.body;
+    const { username, email, password, role, first_name, last_name, department, client } = req.body;
 
     if (!username || !password) {
       return res.status(400).json({
@@ -99,6 +164,7 @@ router.post('/', authenticateToken, requireRole('admin'), (req, res) => {
       first_name: first_name || null,
       last_name: last_name || null,
       department: department || null,
+      client: client || null,
       avatar: null
     });
 
@@ -122,7 +188,7 @@ router.post('/', authenticateToken, requireRole('admin'), (req, res) => {
 // PUT /api/users/:id - Actualizar usuario
 router.put('/:id', authenticateToken, (req, res) => {
   try {
-    const { first_name, last_name, email, department, role, avatar } = req.body;
+    const { first_name, last_name, email, department, role, avatar, client } = req.body;
     const targetId = parseInt(req.params.id);
     const userId = req.user.id || req.user.userId;
 
@@ -162,6 +228,7 @@ router.put('/:id', authenticateToken, (req, res) => {
     if (email !== undefined) updates.email = email;
     if (department !== undefined) updates.department = department;
     if (avatar !== undefined) updates.avatar = avatar;
+    if (client !== undefined) updates.client = client;
     if (role !== undefined && isAdmin) updates.role = role;
 
     const updatedUser = db.update('users', targetId, updates);

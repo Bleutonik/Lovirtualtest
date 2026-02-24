@@ -174,16 +174,26 @@ router.get('/messages/:userId', (req, res) => {
 router.post('/messages', (req, res) => {
   try {
     const userId = req.user.id || req.user.userId;
-    const { to_user_id, content } = req.body;
+    const { to_user_id, content, content_type, image_data } = req.body;
+    const msgType = content_type === 'image' ? 'image' : 'text';
 
-    if (!to_user_id || !content || !content.trim()) {
-      return res.status(400).json({
-        success: false,
-        message: 'Destinatario y contenido son requeridos'
-      });
+    if (!to_user_id) {
+      return res.status(400).json({ success: false, message: 'Destinatario requerido' });
     }
 
-    if (content.length > 2000) {
+    if (msgType === 'text' && (!content || !content.trim())) {
+      return res.status(400).json({ success: false, message: 'Contenido requerido' });
+    }
+
+    if (msgType === 'image' && !image_data) {
+      return res.status(400).json({ success: false, message: 'Imagen requerida' });
+    }
+
+    if (msgType === 'image' && image_data.length > 700000) {
+      return res.status(400).json({ success: false, message: 'Imagen demasiado grande (max 500KB)' });
+    }
+
+    if (msgType === 'text' && content.length > 2000) {
       return res.status(400).json({
         success: false,
         message: 'El mensaje no puede exceder 2000 caracteres'
@@ -203,7 +213,8 @@ router.post('/messages', (req, res) => {
     const message = db.insert('chat_messages', {
       from_user_id: userId,
       to_user_id: parseInt(to_user_id),
-      content: content.trim(),
+      content: msgType === 'image' ? image_data : content.trim(),
+      content_type: msgType,
       read_at: null
     });
 

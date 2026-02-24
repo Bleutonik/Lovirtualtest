@@ -30,10 +30,10 @@ const Admin = () => {
   const [success, setSuccess]       = useState('');
 
   const [users,          setUsers]          = useState([]);
-  const [userForm,       setUserForm]       = useState({ username:'', email:'', password:'' });
+  const [userForm,       setUserForm]       = useState({ username:'', email:'', password:'', first_name:'', last_name:'', client:'' });
   const [isCreating,     setIsCreating]     = useState(false);
   const [editingUser,    setEditingUser]    = useState(null);
-  const [editForm,       setEditForm]       = useState({ email:'', role:'' });
+  const [editForm,       setEditForm]       = useState({ email:'', role:'', first_name:'', last_name:'', client:'' });
 
   const [permissions,    setPermissions]    = useState([]);
   const [incidents,      setIncidents]      = useState([]);
@@ -332,6 +332,18 @@ const Admin = () => {
               <form onSubmit={handleCreateUser} className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div>
+                    <label className="block text-xs font-medium mb-1.5" style={{ color:'#94a3b8' }}>Nombre</label>
+                    <input type="text" value={userForm.first_name} onChange={e=>setUserForm({...userForm,first_name:e.target.value})} className="field" placeholder="Juan" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium mb-1.5" style={{ color:'#94a3b8' }}>Apellido</label>
+                    <input type="text" value={userForm.last_name} onChange={e=>setUserForm({...userForm,last_name:e.target.value})} className="field" placeholder="Pérez" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium mb-1.5" style={{ color:'#94a3b8' }}>Cliente que atiende</label>
+                    <input type="text" value={userForm.client} onChange={e=>setUserForm({...userForm,client:e.target.value})} className="field" placeholder="Empresa XYZ" />
+                  </div>
+                  <div>
                     <label className="block text-xs font-medium mb-1.5" style={{ color:'#94a3b8' }}>Nombre de usuario</label>
                     <input type="text" value={userForm.username} onChange={e=>setUserForm({...userForm,username:e.target.value})} className="field" placeholder="empleado123" required />
                   </div>
@@ -358,7 +370,7 @@ const Admin = () => {
               ) : (
                 <div className="overflow-x-auto">
                   <table className="w-full">
-                    <thead><tr><Th>Usuario</Th><Th>Email</Th><Th>Rol</Th><Th>Creado</Th><Th>Acciones</Th></tr></thead>
+                    <thead><tr><Th>Usuario</Th><Th>Cliente</Th><Th>Email</Th><Th>Rol</Th><Th>Acciones</Th></tr></thead>
                     <tbody>
                       {users.map(u => (
                         <tr key={u.id} className="transition-colors hover:bg-white/[0.02]">
@@ -367,15 +379,21 @@ const Admin = () => {
                               <div className="w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold" style={{ background:`${u.role==='admin'?'rgba(168,85,247,0.15)':'rgba(6,182,212,0.1)'}`, border:`1px solid ${u.role==='admin'?'rgba(168,85,247,0.25)':'rgba(6,182,212,0.2)'}`, color:u.role==='admin'?'#c084fc':'#67e8f9' }}>
                                 {u.username?.charAt(0).toUpperCase()}
                               </div>
-                              <span className="font-medium">{u.username}</span>
+                              <div>
+                                <span className="font-medium">{u.username}</span>
+                                {(u.first_name || u.last_name) && <p className="text-xs" style={{ color:'#475569' }}>{[u.first_name,u.last_name].filter(Boolean).join(' ')}</p>}
+                              </div>
                             </div>
                           </Td>
+                          <Td muted>{u.client || '—'}</Td>
                           <Td muted>{u.email || '—'}</Td>
                           <Td><span className={`badge ${u.role==='admin'?'badge-blue':'badge-cyan'}`}>{u.role==='admin'?'Admin':'Empleado'}</span></Td>
-                          <Td muted>{fmtDate(u.created_at)}</Td>
                           <Td>
                             <div className="flex items-center gap-1.5">
-                              <button onClick={()=>{ setEditingUser(u); setEditForm({email:u.email||'',role:u.role}); }} className="btn btn-ghost px-2.5 py-1.5 text-xs">
+                              <button onClick={()=>navigate(`/profile/${u.id}`)} className="btn btn-ghost px-2.5 py-1.5 text-xs">
+                                Perfil
+                              </button>
+                              <button onClick={()=>{ setEditingUser(u); setEditForm({email:u.email||'',role:u.role,first_name:u.first_name||'',last_name:u.last_name||'',client:u.client||''}); }} className="btn btn-ghost px-2.5 py-1.5 text-xs">
                                 Editar
                               </button>
                               {u.role !== 'admin' && (
@@ -406,7 +424,21 @@ const Admin = () => {
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12"/></svg>
                     </button>
                   </div>
-                  <div className="space-y-4">
+                  <div className="space-y-3">
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-xs font-medium mb-1.5" style={{ color:'#94a3b8' }}>Nombre</label>
+                        <input type="text" value={editForm.first_name} onChange={e=>setEditForm({...editForm,first_name:e.target.value})} className="field" placeholder="Juan" />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium mb-1.5" style={{ color:'#94a3b8' }}>Apellido</label>
+                        <input type="text" value={editForm.last_name} onChange={e=>setEditForm({...editForm,last_name:e.target.value})} className="field" placeholder="Pérez" />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium mb-1.5" style={{ color:'#94a3b8' }}>Cliente que atiende</label>
+                      <input type="text" value={editForm.client} onChange={e=>setEditForm({...editForm,client:e.target.value})} className="field" placeholder="Empresa XYZ" />
+                    </div>
                     <div>
                       <label className="block text-xs font-medium mb-1.5" style={{ color:'#94a3b8' }}>Email</label>
                       <input type="email" value={editForm.email} onChange={e=>setEditForm({...editForm,email:e.target.value})} className="field" placeholder="correo@empresa.com" />

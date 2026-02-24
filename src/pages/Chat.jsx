@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback, memo, startTransition } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { getConversations, getMessages, sendMessage, deleteConversation } from '../services/chat';
+import { getConversations, getMessages, sendMessage, deleteConversation, getActivityStatus } from '../services/chat';
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 const fmtTime = ds =>
@@ -30,19 +30,24 @@ const Av = ({ name = '?', sm }) => (
 // ── Burbuja de mensaje ─────────────────────────────────────────────────────────
 const Bubble = ({ msg, otherName, myName }) => {
   const mine = msg.fromMe;
+  const isImg = msg.content_type === 'image';
   return (
     <div style={{ display: 'flex', alignItems: 'flex-end', gap: 8, marginBottom: 6, justifyContent: mine ? 'flex-end' : 'flex-start', animation: msg._isNew ? 'bubbleIn .2s ease both' : 'none' }}>
       {!mine && <Av name={otherName} sm />}
-      <div style={{ maxWidth: '70%', display: 'flex', flexDirection: 'column', alignItems: mine ? 'flex-end' : 'flex-start', gap: 3 }}>
-        <div style={{
-          padding: '9px 14px', fontSize: 14, lineHeight: 1.55,
-          wordBreak: 'break-word', whiteSpace: 'pre-wrap',
-          ...(mine
-            ? { background: 'linear-gradient(135deg,#0ea5e9,#06b6d4)', color: '#fff', borderRadius: '18px 18px 4px 18px', opacity: msg._sending ? 0.6 : 1 }
-            : { background: '#1c2537', color: '#dde6f0', border: '1px solid rgba(255,255,255,0.07)', borderRadius: '18px 18px 18px 4px' })
-        }}>
-          {msg.content}
-        </div>
+      <div style={{ maxWidth: '72%', display: 'flex', flexDirection: 'column', alignItems: mine ? 'flex-end' : 'flex-start', gap: 3 }}>
+        {isImg
+          ? <img src={msg.content} alt="imagen" style={{ maxWidth: 220, borderRadius: 14, opacity: msg._sending ? 0.6 : 1, cursor: 'pointer' }}
+              onClick={() => window.open(msg.content, '_blank')} />
+          : <div style={{
+              padding: '9px 14px', fontSize: 14, lineHeight: 1.55,
+              wordBreak: 'break-word', whiteSpace: 'pre-wrap',
+              ...(mine
+                ? { background: 'linear-gradient(135deg,#0ea5e9,#06b6d4)', color: '#fff', borderRadius: '18px 18px 4px 18px', opacity: msg._sending ? 0.6 : 1 }
+                : { background: '#1c2537', color: '#dde6f0', border: '1px solid rgba(255,255,255,0.07)', borderRadius: '18px 18px 18px 4px' })
+            }}>
+              {msg.content}
+            </div>
+        }
         <div style={{ display: 'flex', alignItems: 'center', gap: 4, paddingInline: 4, flexDirection: mine ? 'row-reverse' : 'row' }}>
           <span style={{ fontSize: 10, color: '#374151' }}>{fmtTime(msg.created_at)}</span>
           {mine && (
@@ -79,14 +84,14 @@ const Shimmer = () => (
   </div>
 );
 
-// ── ChatInput ─────────────────────────────────────────────────────────────────
-// memo() garantiza que NO re-renderiza cuando el padre actualiza mensajes (polling).
-// useState interno solo re-renderiza este componente, nunca el padre.
+// ── ChatInput con soporte de imágenes ─────────────────────────────────────────
 const ChatInput = memo(({ onSend, sending }) => {
   const [text, setText] = useState('');
-  const taRef = useRef(null);
+  const [preview, setPreview] = useState(null); // base64 preview
+  const [imgData, setImgData] = useState(null);
+  const taRef  = useRef(null);
+  const fileRef = useRef(null);
 
-  // Restaurar foco después de enviar
   useEffect(() => {
     if (!sending) taRef.current?.focus();
   }, [sending]);
@@ -98,51 +103,89 @@ const ChatInput = memo(({ onSend, sending }) => {
     el.style.height = `${Math.min(el.scrollHeight, 120)}px`;
   };
 
-  const submit = () => {
-    const val = text.trim();
-    if (!val || sending) return;
-    setText('');
-    if (taRef.current) taRef.current.style.height = 'auto';
-    onSend(val);
+  const handleFile = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 500000) { alert('Imagen demasiado grande. Máximo 500KB.'); return; }
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      setPreview(ev.target.result);
+      setImgData(ev.target.result);
+    };
+    reader.readAsDataURL(file);
+    e.target.value = '';
   };
 
-  const canSend = text.trim().length > 0 && !sending;
+  const clearImage = () => { setPreview(null); setImgData(null); };
+
+  const submit = () => {
+    if (sending) return;
+    if (imgData) {
+      onSend('', 'image', imgData);
+      clearImage();
+    } else {
+      const val = text.trim();
+      if (!val) return;
+      setText('');
+      if (taRef.current) taRef.current.style.height = 'auto';
+      onSend(val, 'text', null);
+    }
+  };
+
+  const canSend = (text.trim().length > 0 || imgData) && !sending;
 
   return (
-    <form onSubmit={e => { e.preventDefault(); submit(); }}
-      style={{ display: 'flex', alignItems: 'flex-end', gap: 8, padding: '10px 14px', borderTop: '1px solid rgba(255,255,255,0.05)', background: '#07090f', flexShrink: 0 }}>
-      <textarea
-        ref={taRef}
-        value={text}
-        onChange={handleChange}
-        onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submit(); } }}
-        placeholder="Escribe un mensaje…"
-        disabled={sending}
-        rows={1}
-        style={{
-          flex: 1, borderRadius: 22, padding: '10px 16px', fontSize: 14,
-          resize: 'none', outline: 'none', lineHeight: 1.5, fontFamily: 'inherit',
-          background: '#111827', border: '1px solid rgba(14,165,233,0.3)',
-          color: '#f1f5f9', minHeight: 42, maxHeight: 120,
-        }}
-      />
-      <button type="submit" disabled={!canSend}
-        style={{
-          width: 40, height: 40, borderRadius: 12, border: 'none', color: '#fff', flexShrink: 0,
-          background: canSend ? 'linear-gradient(135deg,#0ea5e9,#06b6d4)' : 'rgba(255,255,255,0.07)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: canSend ? 'pointer' : 'default',
-        }}>
-        {sending
-          ? <svg className="animate-spin" width={16} height={16} fill="none" viewBox="0 0 24 24">
-              <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" style={{ opacity: 0.25 }} />
-              <path fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" style={{ opacity: 0.75 }} />
-            </svg>
-          : <svg width={16} height={16} fill="currentColor" viewBox="0 0 24 24" style={{ marginLeft: 2 }}>
-              <path d="M2 21l21-9L2 3v7l15 2-15 2z" />
-            </svg>
-        }
-      </button>
-    </form>
+    <div style={{ borderTop: '1px solid rgba(255,255,255,0.05)', background: '#07090f', flexShrink: 0 }}>
+      {/* Preview de imagen */}
+      {preview && (
+        <div style={{ padding: '8px 14px 0', display: 'flex', alignItems: 'center', gap: 8 }}>
+          <img src={preview} alt="preview" style={{ height: 60, borderRadius: 8, objectFit: 'cover' }} />
+          <button onClick={clearImage} style={{ width: 22, height: 22, borderRadius: '50%', border: 'none', background: 'rgba(239,68,68,0.8)', color: '#fff', cursor: 'pointer', fontSize: 12, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✕</button>
+        </div>
+      )}
+      <form onSubmit={e => { e.preventDefault(); submit(); }}
+        style={{ display: 'flex', alignItems: 'flex-end', gap: 8, padding: '10px 14px' }}>
+        {/* Botón adjuntar imagen */}
+        <input ref={fileRef} type="file" accept="image/*" onChange={handleFile} style={{ display: 'none' }} />
+        <button type="button" onClick={() => fileRef.current?.click()}
+          style={{ width: 36, height: 36, borderRadius: 10, border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.04)', color: '#64748b', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0 }}>
+          <svg width={16} height={16} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
+          </svg>
+        </button>
+        <textarea
+          ref={taRef}
+          value={text}
+          onChange={handleChange}
+          onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submit(); } }}
+          placeholder={imgData ? 'Imagen lista para enviar…' : 'Escribe un mensaje…'}
+          disabled={sending || !!imgData}
+          rows={1}
+          style={{
+            flex: 1, borderRadius: 22, padding: '10px 16px', fontSize: 14,
+            resize: 'none', outline: 'none', lineHeight: 1.5, fontFamily: 'inherit',
+            background: '#111827', border: '1px solid rgba(14,165,233,0.3)',
+            color: '#f1f5f9', minHeight: 42, maxHeight: 120,
+          }}
+        />
+        <button type="submit" disabled={!canSend}
+          style={{
+            width: 40, height: 40, borderRadius: 12, border: 'none', color: '#fff', flexShrink: 0,
+            background: canSend ? 'linear-gradient(135deg,#0ea5e9,#06b6d4)' : 'rgba(255,255,255,0.07)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: canSend ? 'pointer' : 'default',
+          }}>
+          {sending
+            ? <svg className="animate-spin" width={16} height={16} fill="none" viewBox="0 0 24 24">
+                <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" style={{ opacity: 0.25 }} />
+                <path fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" style={{ opacity: 0.75 }} />
+              </svg>
+            : <svg width={16} height={16} fill="currentColor" viewBox="0 0 24 24" style={{ marginLeft: 2 }}>
+                <path d="M2 21l21-9L2 3v7l15 2-15 2z" />
+              </svg>
+          }
+        </button>
+      </form>
+    </div>
   );
 });
 
@@ -169,6 +212,9 @@ export default function Chat() {
   const [msgsLoading,  setMsgsLoading]  = useState(false);
   const [sending,      setSending]      = useState(false);
 
+  // Activity status para dots online
+  const [activityMap,  setActivityMap]  = useState({}); // userId -> 'active'|'idle'|'offline'
+
   // Admin extras
   const [confirmDel,     setConfirmDel]     = useState(null); // userId
   const [showCompose,    setShowCompose]    = useState(false);
@@ -183,11 +229,13 @@ export default function Chat() {
 
   useEffect(() => { selUidRef.current = selUser?.userId ?? null; }, [selUser?.userId]);
 
-  // Poll conversaciones
+  // Poll conversaciones + activity status
   useEffect(() => {
     fetchConvs();
-    const iv = setInterval(fetchConvs, 8000);
-    return () => clearInterval(iv);
+    fetchActivity();
+    const iv1 = setInterval(fetchConvs, 8000);
+    const iv2 = setInterval(fetchActivity, 30000);
+    return () => { clearInterval(iv1); clearInterval(iv2); };
   }, []);
 
   // Mensajes: carga inicial + poll 3s
@@ -216,6 +264,19 @@ export default function Chat() {
     endRef.current?.scrollIntoView({ behavior: instant ? 'instant' : 'smooth' });
 
   // ── API calls ──────────────────────────────────────────────────────────────
+  const fetchActivity = async () => {
+    try {
+      const res = await getActivityStatus();
+      const users = res?.data?.users || res?.data || [];
+      const map = {};
+      users.forEach(u => {
+        const mins = u.lastActivity ? (Date.now() - new Date(u.lastActivity)) / 60000 : 999;
+        map[u.userId || u.id] = mins < 5 ? 'active' : mins < 20 ? 'idle' : 'offline';
+      });
+      startTransition(() => setActivityMap(map));
+    } catch { }
+  };
+
   const fetchConvs = async () => {
     try {
       const res = await getConversations();
@@ -260,15 +321,17 @@ export default function Chat() {
     } catch { }
   };
 
-  const handleSend = useCallback(async (content) => {
-    if (!content || !selUidRef.current) return;
+  const handleSend = useCallback(async (content, contentType = 'text', imageData = null) => {
+    if (!selUidRef.current) return;
+    if (contentType === 'text' && !content) return;
     setSending(true);
     const tid  = `t${Date.now()}`;
-    const temp = { id: tid, content, fromMe: true, created_at: new Date().toISOString(), _sending: true, _isNew: true };
+    const displayContent = contentType === 'image' ? imageData : content;
+    const temp = { id: tid, content: displayContent, content_type: contentType, fromMe: true, created_at: new Date().toISOString(), _sending: true, _isNew: true };
     setMsgs(prev => [...prev, temp]);
     scrollToEnd(true);
     try {
-      const res  = await sendMessage(selUidRef.current, content);
+      const res  = await sendMessage(selUidRef.current, content, contentType, imageData);
       const real = res?.data?.message;
       if (real) {
         setMsgs(prev => prev.map(m => m.id === tid ? { ...real, fromMe: true, _isNew: false } : m));
@@ -413,6 +476,12 @@ export default function Chat() {
                           }}>
                             <div style={{ position: 'relative', flexShrink: 0 }}>
                               <Av name={conv.username} />
+                              {/* Dot de status online */}
+                              {(() => {
+                                const st = activityMap[conv.userId];
+                                const c = st === 'active' ? '#22c55e' : st === 'idle' ? '#f59e0b' : null;
+                                return c ? <span style={{ position: 'absolute', bottom: 0, right: 0, width: 10, height: 10, borderRadius: '50%', background: c, border: '2px solid #0b0f1a' }} /> : null;
+                              })()}
                               {conv.unreadCount > 0 && (
                                 <span style={{ position: 'absolute', top: -3, right: -3, minWidth: 16, height: 16, borderRadius: 8, background: '#ef4444', color: '#fff', fontSize: 9, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 3px' }}>
                                   {conv.unreadCount > 9 ? '9+' : conv.unreadCount}
@@ -423,10 +492,17 @@ export default function Chat() {
                               <span style={{ fontWeight: 500, fontSize: 13, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'block' }}>{conv.username}</span>
                               <p style={{ fontSize: 11, marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: conv.unreadCount > 0 ? '#94a3b8' : '#374151', fontWeight: conv.unreadCount > 0 ? 500 : 400 }}>
                                 {conv.lastMessage
-                                  ? (conv.lastMessage.fromMe ? 'Tú: ' : '') + conv.lastMessage.content
+                                  ? (conv.lastMessage.content_type === 'image' ? '📷 Imagen' : (conv.lastMessage.fromMe ? 'Tú: ' : '') + conv.lastMessage.content)
                                   : <span style={{ fontStyle: 'italic' }}>Sin mensajes</span>}
                               </p>
                             </div>
+                          </button>
+                          {/* Link al perfil */}
+                          <button onClick={() => navigate(`/profile/${conv.userId}`)} title="Ver perfil"
+                            style={{ width: 28, height: 28, borderRadius: 7, border: '1px solid rgba(255,255,255,0.08)', background: 'rgba(255,255,255,0.04)', color: '#64748b', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, cursor: 'pointer', marginRight: 4 }}>
+                            <svg width={13} height={13} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                            </svg>
                           </button>
                           {/* Botón trash — abre modal de confirmación */}
                           <button onClick={() => { selectUser(conv); setConfirmDel(conv.userId); }}
@@ -462,8 +538,16 @@ export default function Chat() {
                   <Av name={selUser.username} sm />
                   <div>
                     <p style={{ fontWeight: 600, fontSize: 13 }}>{selUser.username}</p>
-                    <p style={{ fontSize: 11, color: '#4b5563' }}>{selUser.email || 'Empleado'}</p>
+                    <p style={{ fontSize: 11, color: activityMap[selUser.userId] === 'active' ? '#22c55e' : activityMap[selUser.userId] === 'idle' ? '#f59e0b' : '#4b5563' }}>
+                      {activityMap[selUser.userId] === 'active' ? 'En línea' : activityMap[selUser.userId] === 'idle' ? 'Inactivo' : (selUser.email || 'Empleado')}
+                    </p>
                   </div>
+                  <button onClick={() => navigate(`/profile/${selUser.userId}`)} title="Ver perfil"
+                    style={{ marginLeft: 'auto', width: 30, height: 30, borderRadius: 8, border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.05)', color: '#94a3b8', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0 }}>
+                    <svg width={14} height={14} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                    </svg>
+                  </button>
                   <button onClick={() => setConfirmDel(selUser.userId)} title="Eliminar conversación"
                     style={{ marginLeft: 'auto', width: 30, height: 30, borderRadius: 8, border: '1px solid rgba(239,68,68,0.2)', background: 'rgba(239,68,68,0.06)', color: '#f87171', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0 }}>
                     <svg width={14} height={14} fill="none" stroke="currentColor" viewBox="0 0 24 24">
