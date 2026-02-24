@@ -107,7 +107,7 @@ function Dashboard() {
       <header className="page-header">
         <div className="max-w-6xl mx-auto px-5 py-3 flex items-center justify-between">
           <div className="flex items-center gap-6">
-            <img src="/logo.png" alt="LoVirtual" className="h-7 w-auto opacity-90" style={{ filter: 'invert(1) brightness(1.1)' }} />
+            <img src="http://www.lovirtual.com/wp-content/uploads/2023/09/cropped-LOGO-LOVIRTUAL-SIN-FONDO-1.png" alt="LoVirtual" className="lv-logo" />
             <nav className="hidden md:flex items-center gap-0.5">
               {navItems.map(item => (
                 <button key={item.path} onClick={() => navigate(item.path)}

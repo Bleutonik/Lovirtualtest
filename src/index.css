@@ -266,6 +266,10 @@ select option {
   z-index: 50;
 }
 
+/* Logo: blanco en dark, colores reales en light */
+.lv-logo { filter: brightness(0) invert(1); height: 28px; width: auto; }
+[data-theme="light"] .lv-logo { filter: none; }
+
 /* ── Alert ───────────────────────────────────────────── */
 .alert-success {
   background: rgba(34,197,94,.08);

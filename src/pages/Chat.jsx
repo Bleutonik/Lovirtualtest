@@ -407,6 +407,7 @@ export default function Chat() {
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
           </svg>
         </button>
+        <img src="http://www.lovirtual.com/wp-content/uploads/2023/09/cropped-LOGO-LOVIRTUAL-SIN-FONDO-1.png" alt="LoVirtual" className="lv-logo" />
         <div>
           <p style={{ fontWeight: 600, fontSize: 14 }}>{t('chat.title')}</p>
           <p style={{ fontSize: 11, color: 'var(--text-muted)' }}>{convs.length} {t('chat.employees')}</p>
@@ -607,6 +608,7 @@ export default function Chat() {
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
           </svg>
         </button>
+        <img src="http://www.lovirtual.com/wp-content/uploads/2023/09/cropped-LOGO-LOVIRTUAL-SIN-FONDO-1.png" alt="LoVirtual" className="lv-logo" />
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <Av name={selUser?.username || 'A'} sm />
           <div>

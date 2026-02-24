@@ -162,6 +162,7 @@ const Admin = () => {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
             </svg>
           </button>
+          <img src="http://www.lovirtual.com/wp-content/uploads/2023/09/cropped-LOGO-LOVIRTUAL-SIN-FONDO-1.png" alt="LoVirtual" className="lv-logo" />
           <div>
             <h1 className="font-bold">{isMainAdmin ? t('admin.title') : `Panel — Grupo ${me?.group || ''}`}</h1>
             <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{isMainAdmin ? t('admin.subtitle') : t('admin.groupSubtitle')}</p>

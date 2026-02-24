@@ -55,13 +55,9 @@ const Login = () => {
 
           {/* Logo + título */}
           <div className="text-center mb-8">
-            <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl mb-4"
-              style={{ background: 'linear-gradient(135deg, rgba(6,182,212,0.2), rgba(129,140,248,0.15))', border: '1px solid rgba(6,182,212,0.2)' }}>
-              <svg className="w-7 h-7" style={{ color: 'var(--cyan)' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-              </svg>
+            <div className="flex justify-center mb-5">
+              <img src="http://www.lovirtual.com/wp-content/uploads/2023/09/cropped-LOGO-LOVIRTUAL-SIN-FONDO-1.png" alt="LoVirtual" className="lv-logo" style={{ height: 52 }} />
             </div>
-            <h1 className="text-xl font-bold" style={{ color: 'var(--text)' }}>LoVirtual</h1>
             <p className="text-sm mt-1" style={{ color: 'var(--text-muted)' }}>{t('login.subtitle')}</p>
           </div>
 
