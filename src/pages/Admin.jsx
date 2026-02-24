@@ -71,7 +71,7 @@ const Admin = () => {
   const handleCreateUser = async (e) => {
     e.preventDefault();
     setIsCreating(true);
-    try { await api.post('/users', { username:userForm.username, email:userForm.email||null, password:userForm.password, role:'employee' }); setUserForm({username:'',email:'',password:''}); flash('Usuario creado'); await loadUsers(); }
+    try { await api.post('/users', { username:userForm.username, email:userForm.email||null, password:userForm.password, role:'employee', first_name:userForm.first_name||null, last_name:userForm.last_name||null, client:userForm.client||null }); setUserForm({username:'',email:'',password:'',first_name:'',last_name:'',client:''}); flash('Usuario creado'); await loadUsers(); }
     catch (err) { flash(err.message||'Error al crear usuario','error'); }
     finally { setIsCreating(false); }
   };
