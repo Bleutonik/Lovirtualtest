@@ -13,6 +13,7 @@ import Permissions from './pages/Permissions';
 import Chat from './pages/Chat';
 import Admin from './pages/Admin';
 import EmployeeProfile from './pages/EmployeeProfile';
+import ContentGrid from './pages/ContentGrid';
 
 // Componente para rutas protegidas
 const ProtectedRoute = ({ children }) => {
@@ -144,6 +145,14 @@ function AppRoutes() {
         element={
           <ProtectedRoute>
             <EmployeeProfile />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/content"
+        element={
+          <ProtectedRoute>
+            <ContentGrid />
           </ProtectedRoute>
         }
       />

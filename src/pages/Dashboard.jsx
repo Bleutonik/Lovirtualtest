@@ -84,6 +84,7 @@ function Dashboard() {
     { name: t('nav.incidents'),   path: '/incidents' },
     { name: t('nav.permissions'), path: '/permissions' },
     { name: t('nav.chat'),        path: '/chat' },
+    { name: 'Parrilla',           path: '/content' },
     ...((user?.role === 'admin' || user?.role === 'supervisor') ? [{ name: t('nav.panel'), path: '/admin', admin: true }] : [])
   ];
 

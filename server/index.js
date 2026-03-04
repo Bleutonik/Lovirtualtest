@@ -18,6 +18,7 @@ const announcementsRoutes = require('./routes/announcements');
 const chatRoutes = require('./routes/chat');
 const activityRoutes = require('./routes/activity');
 const feedRoutes = require('./routes/feed');
+const contentRoutes = require('./routes/content');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -96,6 +97,7 @@ app.use('/api/announcements', announcementsRoutes);
 app.use('/api/chat', chatRoutes);
 app.use('/api/activity', activityRoutes);
 app.use('/api/feed', feedRoutes);
+app.use('/api/content', contentRoutes);
 
 // Ruta 404 para API
 app.use('/api/*', (req, res) => {
